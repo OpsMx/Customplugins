@@ -274,15 +274,27 @@ public class VerificationTriggerTask implements Task {
 		if (parameterContext.get("baselineRealTime") != null && parameterContext.get("baselineRealTime").equals(Boolean.TRUE)) {
 			triggerPayload.put("baselineStartTimeMs", startTime);
 		} else {
+			Long baselinestarttime = null;
+			try{
+				baselinestarttime = parameterContext.get("baselinestarttime") != null ? (Long) parameterContext.get("baselinestarttime") : startTime;
+			} catch(ClassCastException cce){
+				baselinestarttime = parameterContext.get("baselinestarttime") != null ? Double.valueOf( (Double) parameterContext.get("baselinestarttime")).longValue() : startTime;
+			}
 			triggerPayload.put("baselineStartTimeMs",
-					parameterContext.get("baselinestarttime") != null ? (Long) parameterContext.get("baselinestarttime") : startTime);
+					baselinestarttime);
 		}
 
 		if (parameterContext.get("canaryRealTime") != null && parameterContext.get("canaryRealTime").equals(Boolean.TRUE)) {
 			triggerPayload.put("baselineStartTimeMs", startTime);
 		} else {
+			Long canarystarttime = null;
+			try {
+				canarystarttime = parameterContext.get("canarystarttime") != null ? (Long) parameterContext.get("canarystarttime") : startTime;
+			} catch (ClassCastException cce){
+				canarystarttime = parameterContext.get("canarystarttime") != null ? Double.valueOf((Double) parameterContext.get("canarystarttime")).longValue() : startTime;
+			}
 			triggerPayload.put("canaryStartTimeMs",
-					parameterContext.get("canarystarttime") != null ? (Long) parameterContext.get("canarystarttime") : startTime);
+					canarystarttime);
 		}
 
 		finalJson.set(CANARY_CONFIG, canaryConfig);

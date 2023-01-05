@@ -26,10 +26,23 @@ export function VerificationExecutionDetails(props: IExecutionDetailsSectionProp
   useEffect(() => {
     if (props.stage.outputs?.canaryReportURL) {
       let urlPath = props.stage.outputs.canaryReportURL.split("/");
+      let startIndex = urlPath.findIndex((inp: any) => inp === 'deploymentverification')
       let path: any[] = [];
-      for (let i = urlPath?.length - 1; i >= 6; i--)
-        path = [urlPath[i], ...path]
-      var constructedPath = path.join("/")
+      for (let i = startIndex + 1; i < urlPath.length; i++)
+        path = [...path, urlPath[i]]
+      let constructedPath;
+      if (path.includes('fromPlugin')) constructedPath = path.join("/");
+      else {
+        if (Number.isInteger(parseInt(path[path.length - 1])) && Number.isInteger(parseInt(path[path.length - 2]))) {
+          path.splice(2, 0, 'fromPlugin');
+          constructedPath = path.join("/");
+        }
+        else {
+          path = [...path, 'fromPlugin']
+          constructedPath = path.join("/");
+        }
+      }
+      console.log("constructed url",`${window.location.origin}/ui/plugin-isd/verification/${constructedPath}`)
       setCanaryUrl(`${window.location.origin}/ui/plugin-isd/verification/${constructedPath}`)
     }
   }, [])

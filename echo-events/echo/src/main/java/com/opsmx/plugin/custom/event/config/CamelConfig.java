@@ -64,6 +64,10 @@ public class CamelConfig {
                     .unmarshal().json(CDRouteInfo.class)
                     .bean(isdEvent, "handleEvent")
                     .end();
+
+            from(EchoConstant.echoEventDirectEndPointUrlForSSD).id(EchoConstant.eventQueueIdForSSD)
+                    .to(camelRouteConfig.ssdConfigure())
+                    .end();
         }
     }
 

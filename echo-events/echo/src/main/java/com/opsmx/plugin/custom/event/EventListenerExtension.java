@@ -1,6 +1,8 @@
 package com.opsmx.plugin.custom.event;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.spinnaker.echo.api.events.Event;
 import com.netflix.spinnaker.echo.api.events.EventListener;
@@ -16,7 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
-import java.util.Map;
+import java.util.*;
 
 @Primary
 @Component
@@ -46,10 +48,39 @@ public class EventListenerExtension implements EventListener {
 
                 String message = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
                 producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrl, message);
-            }
-        }catch (Exception e){
-            logger.error("Exception occurred while processing event : {}", e);
 
+                ssdEvents(eventMap);
+            }
+        } catch (Exception e) {
+            logger.error("Exception occurred while processing event : {}", e);
+        }
+    }
+
+    private void ssdEvents(Map<String, Object> eventMap) {
+        boolean pipelineStatus = false;
+        try {
+            Map<String, Object> details = mapper.readValue(eventMap.get("details").toString(), new TypeReference<>() {});
+            if (details.containsKey("type") && details.get("type") != null &&
+                    (details.get("type").toString().equals("orca:pipeline:complete") || details.get("type").toString().equals("orca:pipeline:failed"))) {
+                pipelineStatus = true;
+            }
+            Map<String, Object> content = mapper.readValue(eventMap.get("content").toString(), new TypeReference<>() {});
+            if (content.containsKey("execution") && content.get("execution") != null) {
+                LinkedHashMap execution = (LinkedHashMap) content.get("execution");
+                if (execution.containsKey("stages") && execution.get("stages") != null) {
+                    ArrayList stages = (ArrayList) execution.get("stages");
+                    for (Object stage : stages) {
+                        Map<String, Object> stageMap = mapper.convertValue(stage, Map.class);
+                        if (pipelineStatus && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")
+                                && stageMap.containsKey("status") && stageMap.get("status").toString().trim().equals("SUCCEEDED")) {
+                            String ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
+                            producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
+                        }
+                    }
+                }
+            }
+        } catch (JsonProcessingException e) {
+            logger.error("Exception occurred while processing event : {}", e);
         }
     }
 }

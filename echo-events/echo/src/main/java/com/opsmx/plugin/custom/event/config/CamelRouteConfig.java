@@ -10,6 +10,7 @@ public interface CamelRouteConfig {
     default void initRequiredValues(){}
     String configure();
     String configureISDRoute();
+    String ssdConfigure();
 
     @Retryable(value = {IOException.class, InterruptedException.class}, backoff = @Backoff(delay = 3000))
     void deleteRoute(String name) throws Exception;

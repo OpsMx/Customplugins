@@ -84,4 +84,13 @@ public class RabbitMQConfig implements CamelRouteConfig {
             }
         }
     }
+
+    @Override
+    public String ssdConfigure() {
+        return messageBrokerConfig.getEndpoint().getName() + ":" + exchange + "?queue="
+                + spinnakerConfig.getSsd() + "&autoDelete=false&routingKey="
+                + spinnakerConfig.getSsd() + "&declare=true&durable=true&exchangeType=direct&hostname="
+                + messageBrokerConfig.getHost() + "&portNumber=" + messageBrokerConfig.getPort()
+                + "&username=" + messageBrokerConfig.getUsername() + "&password=" + messageBrokerConfig.getPassword();
+    }
 }

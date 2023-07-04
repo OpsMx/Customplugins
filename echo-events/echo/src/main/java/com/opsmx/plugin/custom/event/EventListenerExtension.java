@@ -74,14 +74,15 @@ public class EventListenerExtension implements EventListener {
                 LinkedHashMap execution = (LinkedHashMap) content.get("execution");
                 if (execution.containsKey("stages") && execution.get("stages") != null) {
                     ArrayList stages = (ArrayList) execution.get("stages");
+                    String ssdMessage = "";
                     for (Object stage : stages) {
                         Map<String, Object> stageMap = mapper.convertValue(stage, Map.class);
                         if (pipelineStatus && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")
                                 && stageMap.containsKey("status") && stageMap.get("status").toString().trim().equals("SUCCEEDED")) {
-                            String ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
-                            producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
+                            ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
                         }
                     }
+                    producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
                 }
             }
         } catch (JsonProcessingException e) {

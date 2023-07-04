@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
 import java.util.*;
 
 @Primary
@@ -82,7 +84,9 @@ public class EventListenerExtension implements EventListener {
                             ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
                         }
                     }
-                    producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
+                    if (!StringUtils.isEmpty(ssdMessage)) {
+                        producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
+                    }
                 }
             }
         } catch (JsonProcessingException e) {

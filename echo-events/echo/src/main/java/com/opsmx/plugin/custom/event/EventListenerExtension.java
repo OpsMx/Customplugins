@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
 import java.util.*;
 
 @Primary
@@ -74,13 +76,16 @@ public class EventListenerExtension implements EventListener {
                 LinkedHashMap execution = (LinkedHashMap) content.get("execution");
                 if (execution.containsKey("stages") && execution.get("stages") != null) {
                     ArrayList stages = (ArrayList) execution.get("stages");
+                    String ssdMessage = "";
                     for (Object stage : stages) {
                         Map<String, Object> stageMap = mapper.convertValue(stage, Map.class);
                         if (pipelineStatus && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")
                                 && stageMap.containsKey("status") && stageMap.get("status").toString().trim().equals("SUCCEEDED")) {
-                            String ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
-                            producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
+                            ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
                         }
+                    }
+                    if (!StringUtils.isEmpty(ssdMessage)) {
+                        producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
                     }
                 }
             }

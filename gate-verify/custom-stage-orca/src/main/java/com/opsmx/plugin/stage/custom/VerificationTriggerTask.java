@@ -403,10 +403,14 @@ public class VerificationTriggerTask implements Task {
 			//Verification Gate specific details start
 			if (parameters.has("logTemplate")) {
 				gateModel.setLogTemplateName(parameters.get("logTemplate").getAsString().trim());
+			}else {
+				throw new IllegalArgumentException("Verification gate requires a Log Template to be configured");
 			}
 
 			if (parameters.has("metricTemplate")) {
 				gateModel.setMetricTemplateName(parameters.get("metricTemplate").getAsString().trim());
+			}else {
+				throw new IllegalArgumentException("Verification gate requires a Metric Template to be configured");
 			}
 			//Verification Gate specific details end
 

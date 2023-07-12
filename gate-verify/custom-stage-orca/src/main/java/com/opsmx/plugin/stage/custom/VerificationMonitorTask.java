@@ -113,7 +113,7 @@ public class VerificationMonitorTask implements RetryableTask {
 						.build();
 			}
 
-			else if (result.equalsIgnoreCase(OesConstants.REVIEW) || ( Float.compare(minimumScore, overAllScore) >= 0 &&  Float.compare(overAllScore, maximumScore) < 0 )) {
+			else if (result.equalsIgnoreCase(OesConstants.REVIEW) || ( Float.compare(minimumScore, overAllScore) <= 0 &&  Float.compare(overAllScore, maximumScore) < 0 )) {
 				outputs.put(OesConstants.REASON, "Analysis score is between 'Marginal Score' and 'Pass score'");
 				outputs.put(OesConstants.EXCEPTION, "Analysis score is between 'Marginal Score' and 'Pass score'");
 				return TaskResult.builder(ExecutionStatus.TERMINAL)

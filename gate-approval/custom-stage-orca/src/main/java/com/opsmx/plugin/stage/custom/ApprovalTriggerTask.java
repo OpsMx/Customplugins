@@ -686,27 +686,29 @@ public class ApprovalTriggerTask implements Task {
 		JsonArray approvalGroups = parameters.getAsJsonArray("approvalGroups");
 		UserGroupPermission userGroupPermission = new UserGroupPermission();
 
-		for (JsonElement element : approvalGroups) {
-			UserGroup userGroup = new UserGroup();
+		if (!approvalGroups.isJsonNull() && approvalGroups.size() > 0) {
+			for (JsonElement element : approvalGroups) {
+				UserGroup userGroup = new UserGroup();
 
-			JsonObject userGroupJsonObject = element.getAsJsonObject();
-			userGroup.setUserGroupId(userGroupJsonObject.get("userGroupId").getAsInt());
-			userGroup.setUserGroupName(userGroupJsonObject.get("userGroupName").getAsString().trim());
-			userGroup.setAdmin(userGroupJsonObject.get("isAdmin").getAsBoolean());
-			userGroup.setSuperAdmin(userGroupJsonObject.get("isSuperAdmin").getAsBoolean());
-			userGroups.add(userGroup);
-			userGroupPermission.setUserGroupNames(userGroups);
-			userGroupPermission.setPermissionIds(permissionIds);
-		}
-		userGroupPermissions.add(userGroupPermission);
-		GroupPermission approvalUserGroupPermission = new GroupPermission();
-		approvalUserGroupPermission.setUserGroups(userGroupPermissions);
-		CloseableHttpResponse userGroupResponse = updateResourceUserGroupPermissionsForApproval(username, gateId, approvalUserGroupPermission);
+				JsonObject userGroupJsonObject = element.getAsJsonObject();
+				userGroup.setUserGroupId(userGroupJsonObject.get("userGroupId").getAsInt());
+				userGroup.setUserGroupName(userGroupJsonObject.get("userGroupName").getAsString().trim());
+				userGroup.setAdmin(userGroupJsonObject.get("isAdmin").getAsBoolean());
+				userGroup.setSuperAdmin(userGroupJsonObject.get("isSuperAdmin").getAsBoolean());
+				userGroups.add(userGroup);
+				userGroupPermission.setUserGroupNames(userGroups);
+				userGroupPermission.setPermissionIds(permissionIds);
+			}
+			userGroupPermissions.add(userGroupPermission);
+			GroupPermission approvalUserGroupPermission = new GroupPermission();
+			approvalUserGroupPermission.setUserGroups(userGroupPermissions);
+			CloseableHttpResponse userGroupResponse = updateResourceUserGroupPermissionsForApproval(username, gateId, approvalUserGroupPermission);
 
-		logger.debug("Response received from update Resource User Group Permissions For Approval : {}", EntityUtils.toString(userGroupResponse.getEntity()));
+			logger.debug("Response received from update Resource User Group Permissions For Approval : {}", EntityUtils.toString(userGroupResponse.getEntity()));
 
-		if (userGroupResponse.getStatusLine().getStatusCode() == HttpStatus.OK.value()) {
-			logger.info("Successfully updated the approval user group permission for gate id : {}", gateId);
+			if (userGroupResponse.getStatusLine().getStatusCode() == HttpStatus.OK.value()) {
+				logger.info("Successfully updated the approval user group permission for gate id : {}", gateId);
+			}
 		}
 
 	}

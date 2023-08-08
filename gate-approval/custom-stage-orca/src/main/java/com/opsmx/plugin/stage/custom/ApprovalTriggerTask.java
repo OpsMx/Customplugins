@@ -686,7 +686,7 @@ public class ApprovalTriggerTask implements Task {
 		JsonArray approvalGroups = parameters.getAsJsonArray("approvalGroups");
 		UserGroupPermission userGroupPermission = new UserGroupPermission();
 
-		if (!approvalGroups.isJsonNull() && approvalGroups.size() > 0) {
+		if (approvalGroups != null && !approvalGroups.isJsonNull() && approvalGroups.size() > 0) {
 			for (JsonElement element : approvalGroups) {
 				UserGroup userGroup = new UserGroup();
 

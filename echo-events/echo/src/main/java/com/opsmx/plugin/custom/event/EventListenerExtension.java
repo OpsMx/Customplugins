@@ -61,7 +61,7 @@ public class EventListenerExtension implements EventListener {
 
                 if (ssdConfig.isEnable()) {
                     eventMap.put("spinnakerName", spinnakerConfig.getName());
-                    ssdEvents(eventMap);
+                    ssdStageWithDeploymentManifestEvents(eventMap);
                 }
             }
         } catch (Exception e) {
@@ -87,6 +87,36 @@ public class EventListenerExtension implements EventListener {
                         Map<String, Object> stageMap = mapper.convertValue(stage, Map.class);
                         if (pipelineStatus && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")
                                 && stageMap.containsKey("status") && stageMap.get("status").toString().trim().equals("SUCCEEDED")) {
+                            ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
+                        }
+                    }
+                    if (!StringUtils.isEmpty(ssdMessage)) {
+                        producerTemplate.sendBody(EchoConstant.echoEventDirectEndPointUrlForSSD, ssdMessage);
+                    }
+                }
+            }
+        } catch (JsonProcessingException e) {
+            logger.error("Exception occurred while processing event : {}", e);
+        }
+    }
+
+    private void ssdStageWithDeploymentManifestEvents(Map<String, Object> eventMap) {
+        boolean pipelineStatus = false;
+        try {
+            Map<String, Object> details = mapper.readValue(eventMap.get("details").toString(), new TypeReference<>() {});
+            if (details.containsKey("type") && details.get("type") != null &&
+                    (details.get("type").toString().equals("orca:stage:starting"))) {
+                pipelineStatus = true;
+            }
+            Map<String, Object> content = mapper.readValue(eventMap.get("content").toString(), new TypeReference<>() {});
+            if (content.containsKey("execution") && content.get("execution") != null) {
+                LinkedHashMap execution = (LinkedHashMap) content.get("execution");
+                if (execution.containsKey("stages") && execution.get("stages") != null) {
+                    ArrayList stages = (ArrayList) execution.get("stages");
+                    String ssdMessage = "";
+                    for (Object stage : stages) {
+                        Map<String, Object> stageMap = mapper.convertValue(stage, Map.class);
+                        if (pipelineStatus && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")) {
                             ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
                         }
                     }

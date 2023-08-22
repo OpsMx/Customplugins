@@ -61,7 +61,7 @@ public class EventListenerExtension implements EventListener {
 
                 if (ssdConfig.isEnable()) {
                     eventMap.put("spinnakerName", spinnakerConfig.getName());
-                    ssdStageWithDeploymentManifestEvents(eventMap);
+                    isStageStartingEvent(eventMap);
                 }
             }
         } catch (Exception e) {
@@ -100,7 +100,7 @@ public class EventListenerExtension implements EventListener {
         }
     }
 
-    private void ssdStageWithDeploymentManifestEvents(Map<String, Object> eventMap) {
+    private void isStageStartingEvent(Map<String, Object> eventMap) {
         boolean pipelineStatus = false;
         try {
             Map<String, Object> details = mapper.readValue(eventMap.get("details").toString(), new TypeReference<>() {});

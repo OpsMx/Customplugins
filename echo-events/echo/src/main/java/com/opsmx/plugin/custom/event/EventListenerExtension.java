@@ -61,7 +61,7 @@ public class EventListenerExtension implements EventListener {
 
                 if (ssdConfig.isEnable()) {
                     eventMap.put("spinnakerName", spinnakerConfig.getName());
-                    isStageStartingEvent(eventMap);
+                    ssdStageWithDeploymentManifestEvents(eventMap);
                 }
             }
         } catch (Exception e) {
@@ -100,13 +100,13 @@ public class EventListenerExtension implements EventListener {
         }
     }
 
-    private void isStageStartingEvent(Map<String, Object> eventMap) {
-        boolean pipelineStatus = false;
+    private void ssdStageWithDeploymentManifestEvents(Map<String, Object> eventMap) {
+        boolean isStageStartingEvent = false;
         try {
             Map<String, Object> details = mapper.readValue(eventMap.get("details").toString(), new TypeReference<>() {});
             if (details.containsKey("type") && details.get("type") != null &&
                     (details.get("type").toString().equals("orca:stage:starting"))) {
-                pipelineStatus = true;
+                isStageStartingEvent = true;
             }
             Map<String, Object> content = mapper.readValue(eventMap.get("content").toString(), new TypeReference<>() {});
             if (content.containsKey("execution") && content.get("execution") != null) {
@@ -116,7 +116,7 @@ public class EventListenerExtension implements EventListener {
                     String ssdMessage = "";
                     for (Object stage : stages) {
                         Map<String, Object> stageMap = mapper.convertValue(stage, Map.class);
-                        if (pipelineStatus && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")) {
+                        if (isStageStartingEvent && stageMap.containsKey("type") && stageMap.get("type").toString().trim().equals("deployManifest")) {
                             ssdMessage = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(eventMap);
                         }
                     }

@@ -99,7 +99,7 @@ export function PolicyGateExecutionDetails(props: IExecutionDetailsSectionProps)
             <thead>
               <tr>
                 <th className='policy-details-padding'>Status</th>
-                <th className='policy-details-padding'>Message</th>
+                {/* <th className='policy-details-padding'>Message</th> */}
                 <th className='policy-details-padding' style={{ width: '90px' }}>Executed By</th>
                 <th className='policy-details-padding'>Time</th>
                 <th className='policy-details-padding'>Policy Name</th>
@@ -111,7 +111,7 @@ export function PolicyGateExecutionDetails(props: IExecutionDetailsSectionProps)
                 <td className='policy-details-padding'>
                   <span className={'PolicyStatusSmall ' + getClasses()}>{getStatus()}</span>
                 </td>
-                <td className='policy-details-padding wrapMessage'>{props.stage.outputs.message}</td>
+                {/* <td className='policy-details-padding wrapMessage'>{props.stage.outputs.message}</td> */}
                 <td className='policy-details-padding word-break'>{props.stage.outputs.executedBy}</td>
                 <td className='policy-details-padding'>{new Date(props.stage.endTime).toLocaleString()}</td>
                 <td className='policy-details-padding word-break' title={props.stage.outputs.policyName}>{truncateTxt(props.stage.outputs.policyName)}   </td>
@@ -138,6 +138,16 @@ export function PolicyGateExecutionDetails(props: IExecutionDetailsSectionProps)
                   </div>
                 </Modal>      
                 </td>
+              </tr>
+            </tbody>
+            <thead>
+              <tr>
+                <th className='policy-details-padding' colSpan ={5}>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className='policy-details-padding wrapMessage' colSpan ={5}>{props.stage.outputs.message}</td>
               </tr>
             </tbody>
           </table>

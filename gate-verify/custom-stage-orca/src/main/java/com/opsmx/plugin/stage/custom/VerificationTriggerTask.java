@@ -406,11 +406,13 @@ public class VerificationTriggerTask implements Task {
 			} else {
 				throw new IllegalArgumentException("Verification gate requires a Log Template to be configured");
 			}
-
 			if (parameters.has("metricTemplate")) {
 				gateModel.setMetricTemplateName(parameters.get("metricTemplate").getAsString().trim());
 			} else {
 				throw new IllegalArgumentException("Verification gate requires a Metric Template to be configured");
+			}
+			if (!parameters.has("canaryresultscore") || !parameters.has("lifetime") || !parameters.has("minicanaryresult")) {
+				throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
 			}
 			//Verification Gate specific details end
 

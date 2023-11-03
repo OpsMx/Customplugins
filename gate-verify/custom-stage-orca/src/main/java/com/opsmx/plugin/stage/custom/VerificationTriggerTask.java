@@ -96,6 +96,12 @@ public class VerificationTriggerTask implements Task {
 		Map<String, Object> contextMap = new HashMap<>();
 		Map<String, Object> outputs = new HashMap<>();
 		long startTime = Instant.now().toEpochMilli();
+		GateModel gateModel = new GateModel();
+		String stringParam = gson.toJson(stage.getContext().get("parameters"), Map.class);
+		logger.debug("Verification GATE parameters : {}", stringParam);
+		JsonObject parameters = gson.fromJson(stringParam, JsonObject.class);
+		verifyStageParams(parameters, gateModel);
+
 		String triggerUrl = getTriggerURL(stage, outputs);
 		if (triggerUrl == null) {
 			return TaskResult.builder(ExecutionStatus.TERMINAL)
@@ -177,6 +183,21 @@ public class VerificationTriggerTask implements Task {
 							e.getMessage());
 				}
 			}
+		}
+	}
+
+	private static void verifyStageParams(JsonObject parameters, GateModel gateModel) throws IllegalArgumentException {
+		if (!parameters.has("logTemplate")) {
+			throw new IllegalArgumentException("Verification gate requires a Log Template to be configured");
+		}
+		if (!parameters.has("metricTemplate")) {
+			throw new IllegalArgumentException("Verification gate requires a Metric Template to be configured");
+		}
+		if (!parameters.has("canaryresultscore") || !parameters.has("lifetime") || !parameters.has("minicanaryresult")) {
+			throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
+		}
+		if (!parameters.has("baselinestarttime") || !parameters.has("canarystarttime")) {
+			throw new IllegalArgumentException("Verification gate in ISD requires baseline and canary start time for analysis");
 		}
 	}
 
@@ -400,20 +421,10 @@ public class VerificationTriggerTask implements Task {
 			gateModel.setRefId(stage.getRefId());
 			gateModel.setPipelineId(applicationModel.getPipelineId());
 
+			verifyStageParams(parameters, gateModel);
 			//Verification Gate specific details start
-			if (parameters.has("logTemplate")) {
-				gateModel.setLogTemplateName(parameters.get("logTemplate").getAsString().trim());
-			} else {
-				throw new IllegalArgumentException("Verification gate requires a Log Template to be configured");
-			}
-			if (parameters.has("metricTemplate")) {
-				gateModel.setMetricTemplateName(parameters.get("metricTemplate").getAsString().trim());
-			} else {
-				throw new IllegalArgumentException("Verification gate requires a Metric Template to be configured");
-			}
-			if (!parameters.has("canaryresultscore") || !parameters.has("lifetime") || !parameters.has("minicanaryresult")) {
-				throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
-			}
+			gateModel.setLogTemplateName(parameters.get("logTemplate").getAsString().trim());
+			gateModel.setMetricTemplateName(parameters.get("metricTemplate").getAsString().trim());
 			//Verification Gate specific details end
 
 			gateModel.setEnvironmentId(getEnvironmentId(parameters));

@@ -200,7 +200,9 @@ public class VerificationTriggerTask implements Task {
 		if (!parameters.has(METRIC_TEMPLATE)) {
 			throw new IllegalArgumentException("Verification gate requires a Metric Template to be configured");
 		}
-		if (parameters.get(CANARYRESULTSCORE).getAsString().isEmpty() || parameters.get(LIFETIME).getAsString().isEmpty() || parameters.get(MINICANARYRESULT).getAsString().isEmpty()) {
+		if (!parameters.has(CANARYRESULTSCORE) || parameters.get(CANARYRESULTSCORE).getAsString().isEmpty() || parameters.get(CANARYRESULTSCORE) == null ||
+				!parameters.has(LIFETIME) || parameters.get(LIFETIME).getAsString().isEmpty() || parameters.get(LIFETIME) == null ||
+				!parameters.has(MINICANARYRESULT) || parameters.get(MINICANARYRESULT).getAsString().isEmpty() || parameters.get(MINICANARYRESULT) == null) {
 			throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
 		}
 		if (!parameters.has(BASELINESTARTTIME) || !parameters.has(CANARYSTARTTIME)) {

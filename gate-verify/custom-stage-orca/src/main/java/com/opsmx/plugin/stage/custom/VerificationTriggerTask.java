@@ -64,6 +64,13 @@ public class VerificationTriggerTask implements Task {
 	private static final String CANARY_ID = "canaryId";
 	
 	private static final String PAYLOAD_CONSTRAINT = "payloadConstraint";
+	private static final String LOG_TEMPLATE = "logTemplate";
+	private static final String METRIC_TEMPLATE = "metricTemplate";
+	private static final String CANARYRESULTSCORE = "canaryresultscore";
+	private static final String LIFETIME = "lifetime";
+	private static final String MINICANARYRESULT = "minicanaryresult";
+	private static final String BASELINESTARTTIME = "baselinestarttime";
+	private static final String CANARYSTARTTIME = "canarystarttime";
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -187,16 +194,16 @@ public class VerificationTriggerTask implements Task {
 	}
 
 	private static void verifyStageParams(JsonObject parameters, GateModel gateModel) throws IllegalArgumentException {
-		if (!parameters.has("logTemplate")) {
+		if (!parameters.has(LOG_TEMPLATE)) {
 			throw new IllegalArgumentException("Verification gate requires a Log Template to be configured");
 		}
-		if (!parameters.has("metricTemplate")) {
+		if (!parameters.has(METRIC_TEMPLATE)) {
 			throw new IllegalArgumentException("Verification gate requires a Metric Template to be configured");
 		}
-		if (parameters.get("canaryresultscore").getAsString().isEmpty() || parameters.get("lifetime").getAsString().isEmpty() || parameters.get("minicanaryresult").getAsString().isEmpty()) {
+		if (parameters.get(CANARYRESULTSCORE).getAsString().isEmpty() || parameters.get(LIFETIME).getAsString().isEmpty() || parameters.get(MINICANARYRESULT).getAsString().isEmpty()) {
 			throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
 		}
-		if (!parameters.has("baselinestarttime") || !parameters.has("canarystarttime")) {
+		if (!parameters.has(BASELINESTARTTIME) || !parameters.has(CANARYSTARTTIME)) {
 			throw new IllegalArgumentException("Verification gate in ISD requires baseline and canary start time for analysis");
 		}
 	}
@@ -292,22 +299,22 @@ public class VerificationTriggerTask implements Task {
 		finalJson.set(PAYLOAD_CONSTRAINT, payloadConstraintNode);
 
 		ObjectNode canaryConfig = objectMapper.createObjectNode();
-		canaryConfig.put("lifetimeMinutes", parameterContext.get("lifetime") != null ? (String) parameterContext.get("lifetime") : "6");
+		canaryConfig.put("lifetimeMinutes", parameterContext.get(LIFETIME) != null ? (String) parameterContext.get(LIFETIME) : "6");
 		canaryConfig.set("canaryHealthCheckHandler", objectMapper.createObjectNode()
-				.put(MINIMUM_CANARY_RESULT_SCORE, parameterContext.get("minicanaryresult") != null ? (String) parameterContext.get("minicanaryresult") : "70" ));
+				.put(MINIMUM_CANARY_RESULT_SCORE, parameterContext.get(MINICANARYRESULT) != null ? (String) parameterContext.get(MINICANARYRESULT) : "70" ));
 		canaryConfig.set("canarySuccessCriteria", objectMapper.createObjectNode()
-				.put("canaryResultScore", parameterContext.get("canaryresultscore") != null ? (String) parameterContext.get("canaryresultscore") : "90"));
+				.put("canaryResultScore", parameterContext.get(CANARYRESULTSCORE) != null ? (String) parameterContext.get(CANARYRESULTSCORE) : "90"));
 		canaryConfig.put("name", stage.getExecution().getAuthentication().getUser());
 
 		ObjectNode baselinePayload = objectMapper.createObjectNode();
 		ObjectNode canaryPayload = objectMapper.createObjectNode();
-		if (parameterContext.get("logTemplate") != null && ! ((String) parameterContext.get("logTemplate")).isEmpty()) {
+		if (parameterContext.get(LOG_TEMPLATE) != null && ! ((String) parameterContext.get(LOG_TEMPLATE)).isEmpty()) {
 			baselinePayload.set(LOG,
 					prepareJson(stage.getName(), stage.getExecution().getName()));
 			canaryPayload.set(LOG,
 					prepareJson(stage.getName(), stage.getExecution().getName()));
 		}
-		if (parameterContext.get("metricTemplate") != null && !((String) parameterContext.get("metricTemplate")).isEmpty()) {
+		if (parameterContext.get(METRIC_TEMPLATE) != null && !((String) parameterContext.get(METRIC_TEMPLATE)).isEmpty()) {
 			baselinePayload.set(METRIC,
 					prepareJson(stage.getName(), stage.getExecution().getName()));
 			canaryPayload.set(METRIC,
@@ -325,9 +332,9 @@ public class VerificationTriggerTask implements Task {
 		} else {
 			Long baselinestarttime = null;
 			try{
-				baselinestarttime = parameterContext.get("baselinestarttime") != null ? (Long) parameterContext.get("baselinestarttime") : startTime;
+				baselinestarttime = parameterContext.get(BASELINESTARTTIME) != null ? (Long) parameterContext.get(BASELINESTARTTIME) : startTime;
 			} catch(ClassCastException cce){
-				baselinestarttime = parameterContext.get("baselinestarttime") != null ? Double.valueOf( (Double) parameterContext.get("baselinestarttime")).longValue() : startTime;
+				baselinestarttime = parameterContext.get(BASELINESTARTTIME) != null ? Double.valueOf( (Double) parameterContext.get(BASELINESTARTTIME)).longValue() : startTime;
 			}
 			triggerPayload.put("baselineStartTimeMs",
 					baselinestarttime);
@@ -338,9 +345,9 @@ public class VerificationTriggerTask implements Task {
 		} else {
 			Long canarystarttime = null;
 			try {
-				canarystarttime = parameterContext.get("canarystarttime") != null ? (Long) parameterContext.get("canarystarttime") : startTime;
+				canarystarttime = parameterContext.get(CANARYSTARTTIME) != null ? (Long) parameterContext.get(CANARYSTARTTIME) : startTime;
 			} catch (ClassCastException cce){
-				canarystarttime = parameterContext.get("canarystarttime") != null ? Double.valueOf((Double) parameterContext.get("canarystarttime")).longValue() : startTime;
+				canarystarttime = parameterContext.get(CANARYSTARTTIME) != null ? Double.valueOf((Double) parameterContext.get(CANARYSTARTTIME)).longValue() : startTime;
 			}
 			triggerPayload.put("canaryStartTimeMs",
 					canarystarttime);
@@ -423,8 +430,8 @@ public class VerificationTriggerTask implements Task {
 
 			verifyStageParams(parameters, gateModel);
 			//Verification Gate specific details start
-			gateModel.setLogTemplateName(parameters.get("logTemplate").getAsString().trim());
-			gateModel.setMetricTemplateName(parameters.get("metricTemplate").getAsString().trim());
+			gateModel.setLogTemplateName(parameters.get(LOG_TEMPLATE).getAsString().trim());
+			gateModel.setMetricTemplateName(parameters.get(METRIC_TEMPLATE).getAsString().trim());
 			//Verification Gate specific details end
 
 			gateModel.setEnvironmentId(getEnvironmentId(parameters));

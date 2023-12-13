@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -38,8 +39,12 @@ import java.util.*;
 public class PipelineRbacTask implements Task {
 
     public static final String STAGE_STATUS = "stageStatus";
-    private static final String APPLICATION2 = "application";
+    private static final String RESULT = "result";
+    private static final String STATUS = "status";
+    private static final String POLICY_PATH = "POLICY_PATH";
 
+    @Value("${policy.opa.isd:true}")
+    private boolean isISDEnabled;
     @Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
     private String opaUrl;
 
@@ -58,10 +63,12 @@ public class PipelineRbacTask implements Task {
     @Value("${policy.opa.deltaVerification:false}")
     private boolean deltaVerification;
 
+    @Value("${policy.opa.static.pipeline:}")
+    private String staticPolicies;
     private final Gson gson = new Gson();
 
     @Autowired
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     /* OPA spits JSON */
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -90,9 +97,9 @@ public class PipelineRbacTask implements Task {
             return TaskResult.builder(ExecutionStatus.SUCCEEDED).build();
         }
 
-        Response httpResponse;
+        Response httpResponse = null;
         try {
-            logger.info("Stage params: {}", stage.getExecution().getAuthentication().getUser());
+            logger.debug("Stage params: {}", stage.getExecution().getAuthentication().getUser());
             List<String> groupList = new ArrayList<String>();
             if (fiatStatus.isEnabled() && fiatService.isPresent()) {
                 UserPermission.View userPermission = fiatService.get().getUserPermission(stage.getExecution().getAuthentication().getUser());
@@ -160,46 +167,82 @@ public class PipelineRbacTask implements Task {
 
             RequestBody requestBody = RequestBody.create(JSON, finalInput);
             String opaFinalUrl = String.format("%s/%s", opaUrl.endsWith("/") ? opaUrl.substring(0, opaUrl.length() - 1) : opaUrl, opaPolicyLocation.startsWith("/") ? opaPolicyLocation.substring(1) : opaPolicyLocation);
-
-            String opaStringResponse;
+            logger.debug("opaFinalUrl: {}", opaFinalUrl);
+            String opaStringResponse="{}";
+            int statusCode = 200;
 
             /* fetch the response from the spawned call execution */
-            httpResponse = doPost(opaFinalUrl, requestBody);
-            opaStringResponse = httpResponse.body().string();
-            logger.info("OPA response: {}", opaStringResponse);
-            if (isOpaProxy) {
-                if (httpResponse.code() == 401 ) {
-                    JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
-                    StringBuilder denyMessage = new StringBuilder();
-                    extractDenyMessage(opaResponse, denyMessage);
-                    if (StringUtils.isNotBlank(denyMessage)) {
-                        throw new IllegalArgumentException("OpsMx Policy Error(s) - "+ denyMessage.toString());
-                    } else {
-                        throw new IllegalArgumentException("There is no '" + opaResultKey + "' field in the OPA response", null);
+            if(isISDEnabled){
+                Request req = doPost(opaFinalUrl, requestBody);
+                httpResponse = getResponse(opaFinalUrl, req);
+                opaStringResponse = httpResponse.body().string();
+                statusCode = httpResponse.code();
+                validateOPAResponse(opaStringResponse, statusCode);
+            }else {
+                if (!staticPolicies.isEmpty()) {
+                    List<String> policyList = getStaticPolicies();
+                    for(String policy: policyList){
+                        opaFinalUrl = opaFinalUrl.replace(POLICY_PATH, policy); Request req = doPost(opaFinalUrl, requestBody);
+                        logger.debug("opaFinalUrl: {}", opaFinalUrl);
+                        Map<String, Object> responseObject = getOPAResponse(opaFinalUrl, req);
+                        opaStringResponse = String.valueOf(responseObject.get(RESULT));
+                        statusCode = Integer.valueOf(responseObject.get(STATUS).toString());
+                        validateOPAResponse(opaStringResponse, statusCode);
                     }
-                } else if (httpResponse.code() != 200 ) {
-                    throw new IllegalArgumentException(opaStringResponse, null);
-                }
-            } else {
-                if (httpResponse.code() == 401 ) {
-                    JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
-                    StringBuilder denyMessage = new StringBuilder();
-                    extractDenyMessage(opaResponse, denyMessage);
-                    if (StringUtils.isNotBlank(denyMessage)) {
-                        throw new IllegalArgumentException("OpsMx Policy Error(s): "+ denyMessage.toString());
-                    } else {
-                        throw new IllegalArgumentException("There is no '" + opaResultKey + "' field in the OPA response", null);
-                    }
-                } else if (httpResponse.code() != 200 ) {
-                    throw new IllegalArgumentException(opaStringResponse, null);
                 }
             }
+
+
         } catch (IOException e) {
             logger.error("Communication exception for OPA at {}: {}", this.opaUrl, e.toString());
             throw new IllegalArgumentException(e.getMessage(), null);
         }
 
 		return TaskResult.builder(ExecutionStatus.SUCCEEDED).build();
+    }
+
+    private void validateOPAResponse(String opaStringResponse, int statusCode) {
+        logger.debug("OPA response: {}", opaStringResponse);
+        logger.debug("proxy enabled : {}, statuscode : {}, opaResultKey : {}", isOpaProxy, statusCode, opaResultKey);
+        if (isOpaProxy) {
+            if (statusCode == 401) {
+                JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+                StringBuilder denyMessage = new StringBuilder();
+                extractDenyMessage(opaResponse, denyMessage);
+                if (StringUtils.isNotBlank(denyMessage)) {
+                    throw new IllegalArgumentException("OpsMx Policy Error(s) - " + denyMessage.toString());
+                } else {
+                    throw new IllegalArgumentException("There is no '" + opaResultKey + "' field in the OPA response", null);
+                }
+            } else if (statusCode != 200) {
+                throw new IllegalArgumentException(opaStringResponse, null);
+            }
+        } else {
+            if (statusCode == 401) {
+                JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+                StringBuilder denyMessage = new StringBuilder();
+                extractDenyMessage(opaResponse, denyMessage);
+                if (StringUtils.isNotBlank(denyMessage)) {
+                    throw new IllegalArgumentException("OpsMx Policy Error(s): " + denyMessage.toString());
+                } else {
+                    throw new IllegalArgumentException("There is no '" + opaResultKey + "' field in the OPA response", null);
+                }
+            } else if (statusCode != 200) {
+                throw new IllegalArgumentException(opaStringResponse, null);
+            }
+        }
+    }
+
+    private List<String> getStaticPolicies() {
+        if(staticPolicies.contains(",")) {
+            return Arrays.asList(staticPolicies.split(",", -1));
+        }else{
+            List<String> policies = new ArrayList<>();
+            if(!staticPolicies.isEmpty()){
+                policies.add(staticPolicies);
+            }
+            return policies;
+        }
     }
 
     private Map<String, Object> fetchExistingPipeline(Map<String, Object> newPipeline) {
@@ -282,11 +325,9 @@ public class PipelineRbacTask implements Task {
      * Request.Builder()).url(url).get().build(); return getResponse(url, req); }
      */
 
-    private Response doPost(String url, RequestBody requestBody) throws IOException {
-        Request req = (new Request.Builder()).url(url).post(requestBody).build();
-        return getResponse(url, req);
+    private Request doPost(String url, RequestBody requestBody) throws IOException {
+        return (new Request.Builder()).url(url).post(requestBody).build();
     }
-
     private Response getResponse(String url, Request req) throws IOException {
         Response httpResponse = this.opaClient.newCall(req).execute();
         ResponseBody responseBody = httpResponse.body();
@@ -294,5 +335,38 @@ public class PipelineRbacTask implements Task {
             throw new IOException("Http call yielded null response!! url:" + url);
         }
         return httpResponse;
+    }
+    private  Map<String, Object> getOPAResponse(String url, Request req) throws IOException {
+        Map<String, Object> apiResponse = new HashMap<>();
+        Response httpResponse = this.opaClient.newCall(req).execute();
+        String response = httpResponse.body().string();
+        if (response == null) {
+            throw new IOException("Http call yielded null response!! url:" + url);
+        }
+        apiResponse.put(RESULT, response);
+        logger.debug("## OPA Server response: {}", response );
+        JsonObject responseJson = gson.fromJson(response, JsonObject.class);
+        if(!responseJson.has(RESULT)){
+            //No "result" field? It could be due to incorrect policy path
+            logger.error("No 'result' field in the response - {}. OPA api - {}" ,response, req);
+            apiResponse.put(STATUS, HttpStatus.BAD_REQUEST.value());
+            return apiResponse;
+        }
+        JsonObject resultJson = responseJson.get(RESULT).getAsJsonObject();
+        apiResponse.put(RESULT, gson.toJson(resultJson));
+        logger.debug("## resultJson : {}", resultJson);
+        if(!resultJson.has("deny")) {
+            //No "deny" field? that's weird
+            logger.error("No 'deny' field in the response - {}. OPA api - {}",response, req);
+            apiResponse.put(STATUS, HttpStatus.BAD_REQUEST.value());
+            return apiResponse;
+        }
+        if(resultJson.get("deny").getAsJsonArray().size() > 0) {
+            apiResponse.put(STATUS, HttpStatus.UNAUTHORIZED.value());
+        }else{
+            //Number of denies are zero
+            apiResponse.put(STATUS, HttpStatus.OK.value());
+        }
+        return apiResponse;
     }
 }

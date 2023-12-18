@@ -10,6 +10,7 @@ import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +22,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.netflix.spinnaker.front50.model.pipeline.Pipeline;
-import com.netflix.spinnaker.front50.model.pipeline.PipelineDAO;
 import com.netflix.spinnaker.front50.validator.PipelineValidator;
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
@@ -48,15 +48,9 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 
 	@Value("${policy.opa.proxy:true}")
 	private boolean isOpaProxy;
+    @Autowired
+	private StaticPolicies staticPolicies;
 
-	private List<Policy> policyList = new ArrayList<>();
-	@Data
-	@Configuration
-	@ConfigurationProperties(prefix = "policy.opa.static")
-	public static class Policy {
-		private String name;
-		private String packageName;
-	}
 	/* define configurable variables:
 	    opaUrl: OPA or OPA-Proxy base url
 	    opaResultKey: Not needed for Proxy. The key to watch in the return from OPA.
@@ -91,8 +85,8 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			int statusCode = 200;
 
 			/* fetch the response from the spawned call execution */
-			if (!policyList.isEmpty()) {
-				for(Policy policy: policyList){
+			if (!staticPolicies.getPolicyList().isEmpty()) {
+				for(StaticPolicies.Policy policy: staticPolicies.getPolicyList()){
 					String opaFinalUrl = String.format("%s/%s", opaUrl.endsWith("/") ? opaUrl.substring(0, opaUrl.length() - 1) : opaUrl, policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);
 					Request req = doPost(opaFinalUrl, requestBody);

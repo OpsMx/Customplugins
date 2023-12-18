@@ -10,6 +10,7 @@ import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.Errors;
 
 import com.google.gson.Gson;
@@ -35,6 +36,10 @@ import okhttp3.ResponseBody;
 public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExtensionPoint {
 
 	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentValidator.class);
+	public static final String STAGE_STATUS = "stageStatus";
+	private static final String RESULT = "result";
+	private static final String STATUS = "status";
+	private static final String POLICY_PATH = "POLICY_PATH";
 	private final OpaConfigProperties opaConfigProperties;
 	private final PipelineDAO pipelineDAO;
 	/* define configurable variables:
@@ -60,7 +65,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 
 	@Override
 	public void validate(Pipeline pipeline, Errors errors) {
-		if (!opaConfigProperties.isOpaEnabled()) {
+		if (!opaConfigProperties.isEnabled()) {
 			logger.info("OPA not enabled, returning");
 			return;
 		}
@@ -72,50 +77,63 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			logger.debug("Verifying {} with OPA", finalInput);
 			/* build our request to OPA */
 			RequestBody requestBody = RequestBody.create(JSON, finalInput);
-			logger.info("OPA endpoint : {}", opaConfigProperties.getOpaUrl());
+			logger.info("OPA endpoint : {}", opaConfigProperties.getUrl());
 			String opaStringResponse;
+			int statusCode = 200;
+
 			/* fetch the response from the spawned call execution */
-			httpResponse = doPost(opaConfigProperties.getOpaUrl(), requestBody);
-			opaStringResponse = httpResponse.body().string();
-			logger.debug("OPA response: {}", opaStringResponse);
-			logger.info("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isOpaProxy(), httpResponse.code(), opaConfigProperties.getOpaResultKey());
-			if (opaConfigProperties.isOpaProxy()) {
-				if (httpResponse.code() == 401 ) {
-					JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
-					StringBuilder denyMessage = new StringBuilder();
-					extractDenyMessage(opaResponse, denyMessage);
-					if (StringUtils.isNotBlank(denyMessage)) {
-						throw new ValidationException(denyMessage.toString(), null);
-					} else {
-						throw new ValidationException("There is no '" + opaConfigProperties.getOpaResultKey() + "' field in the OPA response", null);
-					}
-				} else if (httpResponse.code() != 200 ) {
-					throw new ValidationException(opaStringResponse, null);
-				}
-			} else {
-				if (httpResponse.code() == 401 ) {
-					JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
-					StringBuilder denyMessage = new StringBuilder();
-					extractDenyMessage(opaResponse, denyMessage);
-					if (StringUtils.isNotBlank(denyMessage)) {
-						throw new ValidationException(denyMessage.toString(), null);
-					} else {
-						throw new ValidationException("There is no '" + opaConfigProperties.getOpaResultKey() + "' field in the OPA response", null);
-					}
-				} else if (httpResponse.code() != 200 ) {
-					throw new ValidationException(opaStringResponse, null);
+			if (!opaConfigProperties.getPolicyList().isEmpty()) {
+				for(OpaConfigProperties.Policy policy: opaConfigProperties.getPolicyList()){
+					String opaFinalUrl = opaConfigProperties.getUrl()+policy.getPackageName() ;
+					Request req = doPost(opaFinalUrl, requestBody);
+					logger.debug("opaFinalUrl: {}", opaFinalUrl);
+					Map<String, Object> responseObject = getOPAResponse(opaFinalUrl, req);
+					opaStringResponse = String.valueOf(responseObject.get(RESULT));
+					statusCode = Integer.valueOf(responseObject.get(STATUS).toString());
+					validateOPAResponse(opaStringResponse, statusCode);
 				}
 			}
 		} catch (IOException e) {
-			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getOpaUrl(), e.toString());
+			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
 			throw new ValidationException(e.toString(), null);
 		}
 	}
+	private void validateOPAResponse(String opaStringResponse, int statusCode) {
+		logger.debug("OPA response: {}", opaStringResponse);
+		logger.info("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isProxy(), statusCode, opaConfigProperties.getResultKey());
+		if (opaConfigProperties.isProxy()) {
+			if (statusCode == 401 ) {
+				JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+				StringBuilder denyMessage = new StringBuilder();
+				extractDenyMessage(opaResponse, denyMessage);
+				if (StringUtils.isNotBlank(denyMessage)) {
+					throw new ValidationException(denyMessage.toString(), null);
+				} else {
+					throw new ValidationException("There is no '" + opaConfigProperties.getResultKey() + "' field in the OPA response", null);
+				}
+			} else if (statusCode != 200 ) {
+				throw new ValidationException(opaStringResponse, null);
+			}
+		} else {
+			if (statusCode == 401 ) {
+				JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+				StringBuilder denyMessage = new StringBuilder();
+				extractDenyMessage(opaResponse, denyMessage);
+				if (StringUtils.isNotBlank(denyMessage)) {
+					throw new ValidationException(denyMessage.toString(), null);
+				} else {
+					throw new ValidationException("There is no '" + opaConfigProperties.getResultKey() + "' field in the OPA response", null);
+				}
+			} else if (statusCode != 200 ) {
+				throw new ValidationException(opaStringResponse, null);
+			}
+		}
 
+	}
 	private void extractDenyMessage(JsonObject opaResponse, StringBuilder messagebuilder) {
 		Set<Entry<String, JsonElement>> fields = opaResponse.entrySet();
 		fields.forEach(field -> {
-			if (field.getKey().equalsIgnoreCase(opaConfigProperties.getOpaResultKey())) {
+			if (field.getKey().equalsIgnoreCase(opaConfigProperties.getResultKey())) {
 				JsonArray resultKey = field.getValue().getAsJsonArray();
 				if (resultKey.size() != 0) {
 					resultKey.forEach(result -> {
@@ -172,17 +190,41 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 		return gson.fromJson(pipelineStr, JsonObject.class);
 	}
 
-	private Response doPost(String url, RequestBody requestBody) throws IOException {
-		Request req = (new Request.Builder()).url(url).post(requestBody).build();
-		return getResponse(url, req);
+	private Request doPost(String url, RequestBody requestBody) throws IOException {
+		return (new Request.Builder()).url(url).post(requestBody).build();
 	}
 
-	private Response getResponse(String url, Request req) throws IOException {
+	private  Map<String, Object> getOPAResponse(String url, Request req) throws IOException {
+		Map<String, Object> apiResponse = new HashMap<>();
 		Response httpResponse = this.opaClient.newCall(req).execute();
-		ResponseBody responseBody = httpResponse.body();
-		if (responseBody == null) {
+		String response = httpResponse.body().string();
+		if (response == null) {
 			throw new IOException("Http call yielded null response!! url:" + url);
 		}
-		return httpResponse;
+		apiResponse.put(RESULT, response);
+		logger.debug("## OPA Server response: {}", response );
+		JsonObject responseJson = gson.fromJson(response, JsonObject.class);
+		if(!responseJson.has(RESULT)){
+			//No "result" field? It could be due to incorrect policy path
+			logger.error("No 'result' field in the response - {}. OPA api - {}" ,response, req);
+			apiResponse.put(STATUS, HttpStatus.BAD_REQUEST.value());
+			return apiResponse;
+		}
+		JsonObject resultJson = responseJson.get(RESULT).getAsJsonObject();
+		apiResponse.put(RESULT, gson.toJson(resultJson));
+		logger.debug("## resultJson : {}", resultJson);
+		if(!resultJson.has("deny")) {
+			//No "deny" field? that's weird
+			logger.error("No 'deny' field in the response - {}. OPA api - {}",response, req);
+			apiResponse.put(STATUS, HttpStatus.BAD_REQUEST.value());
+			return apiResponse;
+		}
+		if(resultJson.get("deny").getAsJsonArray().size() > 0) {
+			apiResponse.put(STATUS, HttpStatus.UNAUTHORIZED.value());
+		}else{
+			//Number of denies are zero
+			apiResponse.put(STATUS, HttpStatus.OK.value());
+		}
+		return apiResponse;
 	}
 }

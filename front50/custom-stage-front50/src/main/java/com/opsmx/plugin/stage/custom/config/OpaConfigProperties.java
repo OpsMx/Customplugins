@@ -13,7 +13,6 @@ import java.util.List;
 @ToString
 @Configuration
 @ConfigurationProperties(prefix = "policy.opa")
-@ConditionalOnExpression("${policy.opa.enabled:false}")
 public class OpaConfigProperties {
     private String url="http://opa:8181/v1/data";
     private String resultKey="deny";
@@ -23,8 +22,7 @@ public class OpaConfigProperties {
     private List<Policy> policyList = new ArrayList<>();
     @Data
     @Configuration
-    @ConditionalOnExpression("${policy.opa.enabled:false}")
-    @ConfigurationProperties(prefix = "policy.opa.")
+    @ConfigurationProperties(prefix = "policy.opa.policies")
     public static class Policy{
      private String name;
      private String packageName;

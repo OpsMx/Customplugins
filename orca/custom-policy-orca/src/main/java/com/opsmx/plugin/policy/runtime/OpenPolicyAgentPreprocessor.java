@@ -3,8 +3,11 @@ package com.opsmx.plugin.policy.runtime;
 import java.io.IOException;
 import java.util.*;
 
+import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
+import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
 import com.opsmx.plugin.policy.runtime.config.OpaConfigProperties;
 import org.apache.commons.lang3.StringUtils;
+import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +29,9 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Nonnull;
 
+@Extension
 @Component
-public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor {
+public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, SpinnakerExtensionPoint {
 
 	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentPreprocessor.class);
 	private static final String RESULT = "result";
@@ -55,7 +59,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor {
         this.opaConfigProperties = opaConfigProperties;
 	}
 	@Override
-	boolean supports(@Nonnull Map<String, Object> execution, @Nonnull Type type){
+	public boolean supports(@Nonnull Map<String, Object> execution, @Nonnull Type type){
 		return true;
 	}
 	@Override

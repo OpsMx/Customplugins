@@ -19,7 +19,6 @@ apply plugin: "kotlin-spring"
 repositories {
   mavenCentral()
   jcenter()
-  maven { url "https://spinnaker-releases.bintray.com/jars" }
 }
 
 sourceSets {
@@ -30,16 +29,21 @@ sourceSets {
 
 spinnakerPlugin {
   serviceName = "orca"
-  pluginClass = "com.opsmx.plugin.stage.custom.PolicyPlugin"
+  pluginClass = "com.opsmx.plugin.policy.runtime.PolicyPlugin"
   requires="orca>=0.0.0"
 }
+configurations {
+  // configuration that holds jars to include in the jar
+  extraLibs
+}
+
 
 dependencies {
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
   compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
-  compileOnly "com.netflix.spinnaker.orca:orca-api:${orcaVersion}"
-  compileOnly "com.netflix.spinnaker.orca:orca-clouddriver:${orcaVersion}"
+  compileOnly "com.netflix.spinnaker.kork:kork-web:7.105.0"
+  compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
@@ -47,24 +51,12 @@ dependencies {
   compileOnly group: 'com.jakewharton.retrofit', name: 'retrofit1-okhttp3-client', version: '1.1.0'
   implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-  testImplementation(platform("com.netflix.spinnaker.orca:orca-bom:${orcaVersion}"))
-  testImplementation "com.netflix.spinnaker.orca:orca-api"
-  testImplementation "com.netflix.spinnaker.orca:orca-api-tck"
-  testImplementation "com.netflix.spinnaker.orca:orca-queue"
-  testImplementation "com.netflix.spinnaker.kork:kork-plugins-tck"
-
-  testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.2"
-  testImplementation "io.strikt:strikt-core:0.22.1"
-  testImplementation "dev.minutest:minutest:1.10.0"
-  testImplementation "io.mockk:mockk:1.9.3"
-  testImplementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.11.1"
-  testImplementation "javax.servlet:javax.servlet-api:4.0.1"
-
   testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
   testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
   testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
-
-  compile "org.apache.httpcomponents:httpclient:4.5.13"
+  implementation("org.apache.commons:commons-lang3:3.0")
+  extraLibs group: 'io.spinnaker.orca', name: 'orca-api', version: '8.48.0'
+  configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
 configurations.all {

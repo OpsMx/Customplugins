@@ -1,17 +1,15 @@
 package com.opsmx.plugin.stage.custom;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 
+import com.opsmx.plugin.stage.custom.config.OpaConfigProperties;
 import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.validation.Errors;
 
 import com.google.gson.Gson;
@@ -33,10 +31,11 @@ import okhttp3.ResponseBody;
 
 
 @Extension
+@EnableConfigurationProperties({OpaConfigProperties.class})
 public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExtensionPoint {
 
 	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentValidator.class);
-
+	private final OpaConfigProperties opaConfigProperties;
 	private final PipelineDAO pipelineDAO;
 	/* define configurable variables:
 	    opaUrl: OPA or OPA-Proxy base url
@@ -46,23 +45,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 	    isOpaEnabled: Policy evaluation is skipped if this is false
 	    isOpaProxy : true if Proxy is present instead of OPA server.
 	 */
-	@Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
-	private String opaUrl;
 
-	@Value("${policy.opa.resultKey:deny}")
-	private String opaResultKey;
-
-	@Value("${policy.opa.policyLocation:/v1/staticPolicy/eval}")
-	private String opaPolicyLocation;
-
-	@Value("${policy.opa.enabled:false}")
-	private boolean isOpaEnabled;
-
-	@Value("${policy.opa.proxy:true}")
-	private boolean isOpaProxy;
-
-	@Value("${policy.opa.deltaVerification:false}")
-	private boolean deltaVerification;
 
 	private final Gson gson = new Gson();
 
@@ -70,38 +53,33 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	private final OkHttpClient opaClient = new OkHttpClient();
 
-	public OpenPolicyAgentValidator(PipelineDAO pipelineDAO) {
-		this.pipelineDAO = pipelineDAO;
+	public OpenPolicyAgentValidator(OpaConfigProperties opaConfigProperties, PipelineDAO pipelineDAO) {
+        this.opaConfigProperties = opaConfigProperties;
+        this.pipelineDAO = pipelineDAO;
 	}
 
 	@Override
 	public void validate(Pipeline pipeline, Errors errors) {
-		if (!isOpaEnabled) {
+		if (!opaConfigProperties.isOpaEnabled()) {
 			logger.info("OPA not enabled, returning");
 			return;
 		}
 		String finalInput = null;
 		Response httpResponse;
 		try {
-
 			// Form input to opa
-			finalInput = getOpaInput(pipeline, deltaVerification);
-
+			finalInput = getOpaInput(pipeline);
 			logger.debug("Verifying {} with OPA", finalInput);
-
 			/* build our request to OPA */
 			RequestBody requestBody = RequestBody.create(JSON, finalInput);
-			String opaFinalUrl = String.format("%s/%s", opaUrl.endsWith("/") ? opaUrl.substring(0, opaUrl.length() - 1) : opaUrl, opaPolicyLocation.startsWith("/") ? opaPolicyLocation.substring(1) : opaPolicyLocation);
-			
-			logger.info("OPA endpoint : {}", opaFinalUrl);
+			logger.info("OPA endpoint : {}", opaConfigProperties.getOpaUrl());
 			String opaStringResponse;
-
 			/* fetch the response from the spawned call execution */
-			httpResponse = doPost(opaFinalUrl, requestBody);
+			httpResponse = doPost(opaConfigProperties.getOpaUrl(), requestBody);
 			opaStringResponse = httpResponse.body().string();
 			logger.debug("OPA response: {}", opaStringResponse);
-			logger.info("proxy enabled : {}, statuscode : {}, opaResultKey : {}", isOpaProxy, httpResponse.code(), opaResultKey);
-			if (isOpaProxy) {
+			logger.info("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isOpaProxy(), httpResponse.code(), opaConfigProperties.getOpaResultKey());
+			if (opaConfigProperties.isOpaProxy()) {
 				if (httpResponse.code() == 401 ) {
 					JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
 					StringBuilder denyMessage = new StringBuilder();
@@ -109,7 +87,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 					if (StringUtils.isNotBlank(denyMessage)) {
 						throw new ValidationException(denyMessage.toString(), null);
 					} else {
-						throw new ValidationException("There is no '" + opaResultKey + "' field in the OPA response", null);
+						throw new ValidationException("There is no '" + opaConfigProperties.getOpaResultKey() + "' field in the OPA response", null);
 					}
 				} else if (httpResponse.code() != 200 ) {
 					throw new ValidationException(opaStringResponse, null);
@@ -122,14 +100,14 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 					if (StringUtils.isNotBlank(denyMessage)) {
 						throw new ValidationException(denyMessage.toString(), null);
 					} else {
-						throw new ValidationException("There is no '" + opaResultKey + "' field in the OPA response", null);
+						throw new ValidationException("There is no '" + opaConfigProperties.getOpaResultKey() + "' field in the OPA response", null);
 					}
 				} else if (httpResponse.code() != 200 ) {
 					throw new ValidationException(opaStringResponse, null);
 				}
 			}
 		} catch (IOException e) {
-			logger.error("Communication exception for OPA at {}: {}", this.opaUrl, e.toString());
+			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getOpaUrl(), e.toString());
 			throw new ValidationException(e.toString(), null);
 		}
 	}
@@ -137,7 +115,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 	private void extractDenyMessage(JsonObject opaResponse, StringBuilder messagebuilder) {
 		Set<Entry<String, JsonElement>> fields = opaResponse.entrySet();
 		fields.forEach(field -> {
-			if (field.getKey().equalsIgnoreCase(opaResultKey)) {
+			if (field.getKey().equalsIgnoreCase(opaConfigProperties.getOpaResultKey())) {
 				JsonArray resultKey = field.getValue().getAsJsonArray();
 				if (resultKey.size() != 0) {
 					resultKey.forEach(result -> {
@@ -157,7 +135,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 		});
 	}
 
-	private String getOpaInput(Pipeline pipeline, boolean deltaVerification) {
+	private String getOpaInput(Pipeline pipeline) {
 		String application;
 		String pipelineName;
 		String finalInput = null;
@@ -166,28 +144,10 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 		if (newPipeline.has("application")) {
 			application = newPipeline.get("application").getAsString();
 			pipelineName = newPipeline.get("name").getAsString();
-			logger.debug("## input : {}", gson.toJson(newPipeline));
-			if (newPipeline.has("stages")) {
-				initialSave = newPipeline.get("stages").getAsJsonArray().size() == 0;
-			}
 			logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
 			// if deltaVerification is true, add both current and new pipelines in single json
-			if (deltaVerification && !initialSave) {
-				List<Pipeline> pipelines =
-						new ArrayList<>(pipelineDAO.getPipelinesByApplication(application, true));
-				logger.debug("## pipeline list count : {}", pipelines.size());
-				Optional<Pipeline> currentPipeline =
-						pipelines.stream()
-						.filter(p -> ((String) p.getName()).equalsIgnoreCase(pipelineName))
-						.findFirst();
-				if (currentPipeline.isPresent()) {
-					finalInput = getFinalOpaInput(newPipeline, pipelineToJsonObject(currentPipeline.get()));
-				} else {
-					throw new ValidationException("There is no pipeline with name " + pipelineName, null);
-				}
-			} else {
-				finalInput = gson.toJson(addWrapper(addWrapper(newPipeline, "new"), "input"));
-			}
+
+			finalInput = gson.toJson(addWrapper(addWrapper(newPipeline, "pipeline"), "input"));
 		} else {
 			throw new ValidationException("The received pipeline doesn't have application field", null);
 		}
@@ -211,11 +171,6 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 		String pipelineStr = gson.toJson(pipeline, Pipeline.class);
 		return gson.fromJson(pipelineStr, JsonObject.class);
 	}
-
-	/*
-	 * private Response doGet(String url) throws IOException { Request req = (new
-	 * Request.Builder()).url(url).get().build(); return getResponse(url, req); }
-	 */
 
 	private Response doPost(String url, RequestBody requestBody) throws IOException {
 		Request req = (new Request.Builder()).url(url).post(requestBody).build();

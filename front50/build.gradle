@@ -21,7 +21,7 @@ spinnakerBundle {
   version = rootProject.version
 }
 
-version = "v1.0.1"
+version = "v1.0.1-SNAPSHOT"
 
 subprojects {
   group = "com.opsmx.plugin.stage.custom"

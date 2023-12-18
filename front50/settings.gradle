@@ -9,7 +9,7 @@ pluginManagement {
   }
 }
 
-rootProject.name = "staticpolicy"
+rootProject.name = "Front50pPolicyPlugin"
 
 include "custom-stage-front50"
 

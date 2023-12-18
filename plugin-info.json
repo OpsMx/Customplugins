@@ -5,9 +5,9 @@
     "releases": [
         {
             "version": "v1.0.1-SNAPSHOT",
-            "date": "2023-12-18T12:32:00.583287Z",
+            "date": "2023-12-18T12:33:38.974461Z",
             "requires": "front50>=0.0.0",
-            "sha512sum": "f9916a36b6f880984af1e84b5004b8c6811ac8755cab9a0c7a9e265b5f021be0cafc1a6e249c33de83b3edd7a6e658d58a895678d2f096bc5e959892cc933804",
+            "sha512sum": "2e5e519c11c249f4817b332cccbddbc98587f263ab2ca59562db0b38d0e5874aa53b360df4c5a6561e478aba23d0a2d0b21af885ee6c4eb8a23712299333c09f",
             "preferred": false,
             "compatibility": [
                 

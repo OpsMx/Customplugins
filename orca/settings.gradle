@@ -1,0 +1,25 @@
+pluginManagement {
+  repositories {
+    mavenLocal()
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+    maven { url "https://dl.bintray.com/spinnaker/gradle/" }
+    gradlePluginPortal()
+  }
+}
+
+rootProject.name = "OrcaPolicyPlugin"
+
+include "custom-policy-orca"
+
+def setBuildFile(project) {
+  project.buildFileName = "${project.name}.gradle"
+  project.children.each {
+    setBuildFile(it)
+  }
+}
+
+rootProject.children.each {
+  setBuildFile(it)
+}

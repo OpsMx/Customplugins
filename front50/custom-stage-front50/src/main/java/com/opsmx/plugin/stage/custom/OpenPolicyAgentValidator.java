@@ -60,8 +60,10 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 
     @Override
 	public void validate(Pipeline pipeline, ValidatorErrors errors) {
+		logger.debug("Start of the Policy Validation");
 		if (!opaConfigProperties.isEnabled()) {
 			logger.info("OPA not enabled, returning");
+			logger.debug("End of the Policy Validation");
 			return;
 		}
 		String finalInput = null;
@@ -80,8 +82,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 				for(OpaConfigProperties.Policy policy: opaConfigProperties.getStaticpolicies()){
 					String opaFinalUrl = String.format("%s/%s", opaConfigProperties.getUrl().endsWith("/") ? opaConfigProperties.getUrl().substring(0, opaConfigProperties.getUrl().length() - 1) : opaConfigProperties.getUrl(), policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);
-					Request req = doPost(opaFinalUrl, requestBody);
-					logger.debug("opaFinalUrl: {}", opaFinalUrl);
+					Request req = doPost(opaFinalUrl, requestBody);		;
 					Map<String, Object> responseObject = getOPAResponse(opaFinalUrl, req);
 					opaStringResponse = String.valueOf(responseObject.get(RESULT));
 					statusCode = Integer.valueOf(responseObject.get(STATUS).toString());
@@ -92,6 +93,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
 			throw new ValidationException(e.toString(), null);
 		}
+		logger.debug("End of the Policy Validation");
 	}
 	private void validateOPAResponse(String opaStringResponse, int statusCode) {
 		logger.debug("OPA response: {}", opaStringResponse);

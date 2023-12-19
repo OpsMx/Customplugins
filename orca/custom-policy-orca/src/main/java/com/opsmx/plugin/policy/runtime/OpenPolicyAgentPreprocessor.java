@@ -5,13 +5,13 @@ import java.util.*;
 
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
 import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
-import com.opsmx.plugin.policy.runtime.config.OpaConfigProperties;
 import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.HttpStatus;
 
 import com.google.gson.Gson;
@@ -31,12 +31,12 @@ import javax.annotation.Nonnull;
 
 @Extension
 @Component
+@ComponentScan("com.opsmx.plugin.policy.runtime")
 public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, SpinnakerExtensionPoint {
 
 	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentPreprocessor.class);
 	private static final String RESULT = "result";
 	private static final String STATUS = "status";
-	@Autowired
 	private OpaConfigProperties opaConfigProperties;
 
 	/* define configurable variables:
@@ -54,7 +54,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	/* OPA spits JSON */
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	private final OkHttpClient opaClient = new OkHttpClient();
-
+	@Autowired
 	public OpenPolicyAgentPreprocessor(OpaConfigProperties opaConfigProperties) {
         this.opaConfigProperties = opaConfigProperties;
 	}
@@ -84,9 +84,10 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 
 			logger.debug("OPA endpoint : {}", opaConfigProperties.getUrl());
 			String opaStringResponse = "{}";
+			logger.debug("Policy list :"+opaConfigProperties.getRuntime().size());
 
-			if (opaConfigProperties.getPolicyList().isEmpty()) {
-				for (OpaConfigProperties.Policy policy : opaConfigProperties.getPolicyList()) {
+			if (!opaConfigProperties.getRuntime().isEmpty()) {
+				for (OpaConfigProperties.Policy policy : opaConfigProperties.getRuntime()) {
 					String opaFinalUrl = String.format("%s/%s", opaConfigProperties.getUrl().endsWith("/") ? opaConfigProperties.getUrl().substring(0, opaConfigProperties.getUrl().length() - 1) : opaConfigProperties.getUrl(), policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);
 					Map<String, Object> responseObject = doPost(opaFinalUrl, requestBody);

@@ -1,4 +1,4 @@
-package com.opsmx.plugin.policy.runtime.config;
+package com.opsmx.plugin.policy.runtime;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -16,7 +16,7 @@ public class OpaConfigProperties {
     private boolean enabled=false;
     private boolean proxy=true;
     private boolean deltaVerification=false;
-    private List<Policy> policyList = new ArrayList<>();
+    private List<Policy> runtime;
 
     public String getUrl() {
         return url;
@@ -58,12 +58,12 @@ public class OpaConfigProperties {
         this.deltaVerification = deltaVerification;
     }
 
-    public List<Policy> getPolicyList() {
-        return policyList;
+    public List<Policy> getRuntime() {
+        return runtime;
     }
 
-    public void setPolicyList(List<Policy> policyList) {
-        this.policyList = policyList;
+    public void setRuntime(List<Policy> runtime) {
+        this.runtime = runtime;
     }
 
     @Configuration

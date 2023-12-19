@@ -59,7 +59,8 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
         this.opaConfigProperties = opaConfigProperties;
 	}
 	@Override
-	public boolean supports(@Nonnull Map<String, Object> execution, @Nonnull Type type){
+	public boolean supports(@Nonnull Map<String, Object> pipeline, @Nonnull Type type){
+		logger.info("ExecutionPreprocessor Type :{}",type);
 		if(type.equals(Type.PIPELINE)){
 			return true;
 		}
@@ -231,5 +232,16 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			apiResponse.put(STATUS, HttpStatus.OK.value());
 		}
 		return apiResponse;
+	}
+	private boolean verifyPipelineSupports(@Nonnull Map<String, Object> pipeline){
+		JsonObject newPipeline = pipelineToJsonObject(pipeline);
+		JsonArray stages = newPipeline.get("stages").getAsJsonArray();
+		if(stages.size() ==1){
+			JsonObject stage = stages.get(0).getAsJsonObject();
+			if (stage.has("type") && stage.get("type").getAsString().equalsIgnoreCase("savePipeline")) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

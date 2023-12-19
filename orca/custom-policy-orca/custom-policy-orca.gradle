@@ -29,7 +29,7 @@ sourceSets {
 
 spinnakerPlugin {
   serviceName = "orca"
-  pluginClass = "com.opsmx.plugin.policy.runtime.PolicyPlugin"
+  pluginClass = "com.opsmx.plugin.policy.runtime.RuntimePolicyPlugin"
   requires="orca>=0.0.0"
 }
 configurations {
@@ -44,6 +44,9 @@ dependencies {
   compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
   compileOnly "com.netflix.spinnaker.kork:kork-web:7.105.0"
   compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-echo:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
@@ -54,9 +57,6 @@ dependencies {
   testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
   testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
   testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
-  implementation("org.apache.commons:commons-lang3:3.0")
-  extraLibs group: 'io.spinnaker.orca', name: 'orca-api', version: '8.48.0'
-  configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
 configurations.all {

@@ -54,9 +54,6 @@ dependencies {
   testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
   testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
   testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
-  implementation("org.apache.commons:commons-lang3:3.0")
-  extraLibs group: 'io.spinnaker.orca', name: 'orca-api', version: '8.48.0'
-  configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
 configurations.all {

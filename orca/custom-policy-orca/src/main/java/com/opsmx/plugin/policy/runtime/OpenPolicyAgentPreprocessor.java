@@ -60,7 +60,10 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	}
 	@Override
 	public boolean supports(@Nonnull Map<String, Object> execution, @Nonnull Type type){
-		return true;
+		if(type.equals(Type.PIPELINE)){
+			return true;
+		}
+		return false;
 	}
 	@Override
 	public Map<String, Object> process(@Nonnull Map<String, Object> pipeline){

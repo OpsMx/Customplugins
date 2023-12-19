@@ -21,7 +21,7 @@ spinnakerBundle {
   version = rootProject.version
 }
 
-version = "v1.0.1-SNAPSHOT"
+version = "v1.0.2-SNAPSHOT"
 
 subprojects {
   group = "com.opsmx.plugin.stage.custom"
@@ -37,6 +37,12 @@ subprojects {
           continuation_indent_size: "2",
         ])
       }
+    }
+  }
+  tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << "-parameters"
+    javaCompiler = javaToolchains.compilerFor {
+      languageVersion = JavaLanguageVersion.of(17)
     }
   }
 }

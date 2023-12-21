@@ -90,7 +90,14 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 				}
 			}
 		} catch (IOException e) {
+			e.printStackTrace();
 			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
+			throw new ValidationException(e.toString(), null);
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error("Exception occured : {}", e);
+			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
+			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
 		}
 		logger.debug("End of the Policy Validation");
@@ -159,7 +166,6 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			application = newPipeline.get("application").getAsString();
 			pipelineName = newPipeline.get("name").getAsString();
 			logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
-			// if deltaVerification is true, add both current and new pipelines in single json
 
 			finalInput = gson.toJson(addWrapper(addWrapper(newPipeline, "pipeline"), "input"));
 		} else {

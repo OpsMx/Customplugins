@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import com.netflix.spinnaker.front50.api.model.pipeline.Pipeline;
@@ -25,7 +24,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
+import okhttp3.ResponseBody;
 @Extension
 @Component
 @ComponentScan("com.opsmx.plugin.stage.custom")
@@ -33,7 +32,6 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 
 	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentValidator.class);
 	private static final String RESULT = "result";
-	private static final String STATUS = "status";
 
 	private OpaConfigProperties opaConfigProperties;
 
@@ -64,6 +62,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			return;
 		}
 		String finalInput = null;
+		Response httpResponse;
 		try {
 			// Form input to opa
 			finalInput = getOpaInput(pipeline);
@@ -72,36 +71,35 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			RequestBody requestBody = RequestBody.create(JSON, finalInput);
 			logger.debug("OPA endpoint : {}", opaConfigProperties.getUrl());
 			String opaStringResponse;
-			int statusCode = 200;
 
 			/* fetch the response from the spawned call execution */
 			if (!opaConfigProperties.getStaticpolicies().isEmpty()) {
 				for(OpaConfigProperties.Policy policy: opaConfigProperties.getStaticpolicies()){
 					String opaFinalUrl = String.format("%s/%s", opaConfigProperties.getUrl().endsWith("/") ? opaConfigProperties.getUrl().substring(0, opaConfigProperties.getUrl().length() - 1) : opaConfigProperties.getUrl(), policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);
-					Request req = doPost(opaFinalUrl, requestBody);		;
-					Map<String, Object> responseObject = getOPAResponse(opaFinalUrl, req);
-					opaStringResponse = String.valueOf(responseObject.get(RESULT));
-					statusCode = Integer.valueOf(responseObject.get(STATUS).toString());
-					validateOPAResponse(opaStringResponse, statusCode);
+					httpResponse = doPost(opaFinalUrl, requestBody);		;
+					opaStringResponse = httpResponse.body().string();
+					logger.info("OPA response: {}", opaStringResponse);
+					logger.debug("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isProxy(), httpResponse.code(), opaConfigProperties.getResultKey());
+					if (opaConfigProperties.isProxy()) {
+						if (httpResponse.code() != 200) {
+							throw new ValidationException(opaStringResponse, null);
+						}else{
+							validateOPAResponse(opaStringResponse);
+						}
+					} else {
+						validateOPAResponse(opaStringResponse);
+					}
 				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
 			throw new ValidationException(e.toString(), null);
-		} catch (Exception e) {
-			e.printStackTrace();
-			logger.error("Exception occured : {}", e);
-			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
-			logger.debug("End of the Policy Validation");
-			throw new ValidationException(e.toString(), null);
 		}
 		logger.debug("End of the Policy Validation");
 	}
-	private void validateOPAResponse(String opaStringResponse, int statusCode) {
-		logger.debug("OPA response: {}", opaStringResponse);
-		logger.debug("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isProxy(), statusCode, opaConfigProperties.getResultKey());
+	/*private void validateOPAResponse(String opaStringResponse) {
 		if (opaConfigProperties.isProxy()) {
 			if (statusCode == 401 ) {
 				JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
@@ -130,6 +128,24 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			}
 		}
 
+	}*/
+	private void validateOPAResponse(String opaStringResponse){
+		JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+		JsonObject opaResult;
+		if (opaResponse.has(RESULT)) {
+			opaResult = opaResponse.get(RESULT).getAsJsonObject();
+			if (opaResult.has(opaConfigProperties.getResultKey())) {
+				StringBuilder denyMessage = new StringBuilder();
+				extractDenyMessage(opaResponse, denyMessage);
+				if (StringUtils.isNotBlank(denyMessage)) {
+					throw new ValidationException(denyMessage.toString(), null);
+				}
+			} else {
+				throw new ValidationException("There is no '" + opaConfigProperties.getResultKey() + "' field in the OPA response", null);
+			}
+		} else {
+			throw new ValidationException("There is no 'result' field in the OPA response", null);
+		}
 	}
 	private void extractDenyMessage(JsonObject opaResponse, StringBuilder messagebuilder) {
 		Set<Entry<String, JsonElement>> fields = opaResponse.entrySet();
@@ -193,11 +209,19 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 		}
 	}
 
-	private Request doPost(String url, RequestBody requestBody) throws IOException {
-		return (new Request.Builder()).url(url).post(requestBody).build();
+	private Response doPost(String url, RequestBody requestBody) throws IOException {
+		Request req = (new Request.Builder()).url(url).post(requestBody).build();
+		return getOPAResponse(url, req);
 	}
-
-	private  Map<String, Object> getOPAResponse(String url, Request req) throws IOException {
+	private Response getOPAResponse(String url, Request req) throws IOException {
+		Response httpResponse = this.opaClient.newCall(req).execute();
+		ResponseBody responseBody = httpResponse.body();
+		if (responseBody == null) {
+			throw new IOException("Http call yielded null response!! url:" + url);
+		}
+		return httpResponse;
+	}
+	/*private  Map<String, Object> getOPAResponse(String url, Request req) throws IOException {
 		Map<String, Object> apiResponse = new HashMap<>();
 		Response httpResponse = this.opaClient.newCall(req).execute();
 		String response = httpResponse.body().string();
@@ -229,5 +253,5 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 			apiResponse.put(STATUS, HttpStatus.OK.value());
 		}
 		return apiResponse;
-	}
+	}*/
 }

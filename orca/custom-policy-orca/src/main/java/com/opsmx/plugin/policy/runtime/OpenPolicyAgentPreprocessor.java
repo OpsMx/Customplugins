@@ -1,10 +1,14 @@
 package com.opsmx.plugin.policy.runtime;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.*;
 
+import com.google.gson.*;
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
 import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
+import groovy.json.JsonException;
+import org.apache.catalina.Pipeline;
 import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
@@ -14,10 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.HttpStatus;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
 
 import okhttp3.MediaType;
@@ -69,6 +69,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	@Override
 	public Map<String, Object> process(@Nonnull Map<String, Object> pipeline){
 		logger.debug("Start of the Policy Validation");
+		logger.debug("input Pipeline :{}", pipeline);
 		if (!opaConfigProperties.isEnabled()) {
 			logger.info("OPA not enabled, returning");
 			logger.debug("End of the Policy Validation");
@@ -77,6 +78,11 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		String finalInput = "{}";
 		int statusCode = 200;
 		try {
+			if(isChildPipeline(pipeline)){
+				logger.debug("This pipeline is a child pipeline and trigger by parent ");
+				logger.debug("End of the Policy Validation");
+				return pipeline;
+			}
 			// Form input to opa
 			finalInput = getOpaInput(pipeline);
 
@@ -104,12 +110,29 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			}
 
 		} catch (IOException e) {
+			e.printStackTrace();
 			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
+			logger.debug("End of the Policy Validation");
+			throw new ValidationException(e.toString(), null);
+		}catch (Exception e) {
+			e.printStackTrace();
+			logger.error("Exception occured : {}", e);
+			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
 		}
 		logger.debug("End of the Policy Validation");
 		return pipeline;
+	}
+
+	private boolean isChildPipeline(Map<String, Object> pipeline) {
+		if( pipeline.containsKey("trigger") ) {
+			Map<String, Object> trigger = (Map<String, Object>) pipeline.get("trigger");
+			if (trigger.containsKey("type") && trigger.get("type").toString().equalsIgnoreCase("pipeline") && trigger.containsKey("parentExecution")) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void validateOPAResponse(String opaStringResponse, int statusCode) {
@@ -168,6 +191,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	}
 
 	private String getOpaInput(Map<String, Object> pipeline) {
+		logger.debug("Start of the getOpaInput");
 		String application;
 		String pipelineName;
 		String finalInput = null;
@@ -181,6 +205,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		} else {
 			throw new ValidationException("The received pipeline doesn't have application field", null);
 		}
+		logger.debug("End of the getOpaInput");
 		return finalInput;
 	}
 
@@ -191,8 +216,17 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	}
 
 	private JsonObject pipelineToJsonObject(Map<String, Object> pipeline) {
-		String pipelineStr = gson.toJson(pipeline);
-		return gson.fromJson(pipelineStr, JsonObject.class);
+		logger.debug("Start of the pipelineToJsonObject");
+		try {
+			String pipelineStr = gson.toJson(pipeline, Map.class);
+			logger.debug("End of the pipelineToJsonObject");
+			return gson.fromJson(pipelineStr, JsonObject.class);
+		}catch (JsonParseException e){
+			e.printStackTrace();
+			logger.error("Exception occure while converting the input pipline to Json :{}", e);
+			logger.debug("End of the pipelineToJsonObject");
+			throw new ValidationException("Converstion Failed while converting the input pipline to Json:" + e.toString(), null);
+		}
 	}
 
 	private Map<String, Object> doPost(String url, RequestBody requestBody) throws IOException {

@@ -114,7 +114,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
-		}catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 			logger.error("Exception occured : {}", e);
 			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);

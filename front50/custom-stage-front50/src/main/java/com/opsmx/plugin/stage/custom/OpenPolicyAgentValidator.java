@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.google.gson.*;
 import com.netflix.spinnaker.front50.api.validator.ValidatorErrors;
 import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
@@ -14,10 +15,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.netflix.spinnaker.front50.api.model.pipeline.Pipeline;
 import com.netflix.spinnaker.front50.api.validator.PipelineValidator;
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
@@ -158,6 +155,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 	}
 
 	private String getOpaInput(Pipeline pipeline) {
+		logger.debug("Start of the getOpaInput");
 		String application;
 		String pipelineName;
 		String finalInput = null;
@@ -171,6 +169,7 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 		} else {
 			throw new ValidationException("The received pipeline doesn't have application field", null);
 		}
+		logger.debug("End of the getOpaInput");
 		return finalInput;
 	}
 
@@ -181,8 +180,17 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 	}
 
 	private JsonObject pipelineToJsonObject(Pipeline pipeline) {
-		String pipelineStr = gson.toJson(pipeline, Pipeline.class);
-		return gson.fromJson(pipelineStr, JsonObject.class);
+		logger.debug("Start of the pipelineToJsonObject");
+		try {
+			String pipelineStr = gson.toJson(pipeline, Pipeline.class);
+			logger.debug("End of the pipelineToJsonObject");
+			return gson.fromJson(pipelineStr, JsonObject.class);
+		} catch (JsonParseException e) {
+			e.printStackTrace();
+			logger.error("Exception occure while converting the input pipline to Json :{}", e);
+			logger.debug("End of the pipelineToJsonObject");
+			throw new ValidationException("Converstion Failed while converting the input pipline to Json:" + e.toString(), null);
+		}
 	}
 
 	private Request doPost(String url, RequestBody requestBody) throws IOException {

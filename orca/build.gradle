@@ -21,7 +21,7 @@ spinnakerBundle {
   version = rootProject.version
 }
 
-version = "v1.0.1-SNAPSHOT"
+version = "v1.0.2-SNAPSHOT"
 
 subprojects {
   group = "com.opsmx.plugin.policy.runtime"

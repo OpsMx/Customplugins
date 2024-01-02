@@ -3,9 +3,6 @@ package com.opsmx.plugin.policy.runtime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.*;
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
-import com.netflix.spinnaker.orca.api.pipeline.Task;
-import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.Trigger;
@@ -15,18 +12,15 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 @Component
-public class RestartPipelineTask {
-    private final Logger logger = LoggerFactory.getLogger(RestartPipelineTask.class);
+public class ValidationRestartPipeline {
+    private final Logger logger = LoggerFactory.getLogger(ValidationRestartPipeline.class);
     private static final String RESULT = "result";
     private static final String STATUS = "status";
     private OpaConfigProperties opaConfigProperties;
@@ -51,7 +45,7 @@ public class RestartPipelineTask {
     private final OkHttpClient opaClient = new OkHttpClient();
 
     @Autowired
-    public RestartPipelineTask(OpaConfigProperties opaConfigProperties) {
+    public ValidationRestartPipeline(OpaConfigProperties opaConfigProperties) {
         logger.debug("Start of the RestartPipelineTask Constructor");
         this.opaConfigProperties = opaConfigProperties;
         logger.debug("End of the RestartPipelineTask Constructor");
@@ -62,15 +56,8 @@ public class RestartPipelineTask {
         if (!opaConfigProperties.isEnabled()) {
             logger.info("OPA not enabled, returning");
             logger.debug("End of the RestartPipelineTask Policy Validation");
-            //return TaskResult.builder(ExecutionStatus.SUCCEEDED).build();
             return;
         }
-        /*if (!stageExecution.isManualJudgmentType()) {
-            logger.info("Stage is not Manual Judgment ");
-            logger.debug("End of the RestartPipelineTask Policy Validation");
-            //return TaskResult.builder(ExecutionStatus.SUCCEEDED).build();
-            return;
-        }*/
         PipelineExecution pipelineExecution = stageExecution.getExecution();
         String finalInput = null;
         Response httpResponse;
@@ -109,7 +96,6 @@ public class RestartPipelineTask {
             throw new ValidationException(e.toString(), null);
         }
         logger.debug("End of the RestartPipelineTask Policy Validation");
-        //return TaskResult.builder(ExecutionStatus.SUCCEEDED).build();
     }
 
     private boolean isChildPipeline(PipelineExecution pipelineExecution) {
@@ -196,7 +182,7 @@ private JsonObject pipelineToJsonObject(PipelineExecution pipelineExecution) {
     try {
         String pipelineStr = objectMapper.writeValueAsString(pipelineExecution);
         logger.debug("End of the pipelineToJsonObject");
-        return gson.fromJson(pipelineStr, JsonObject.class);
+        return objectMapper.convertValue(pipelineStr, JsonObject.class);
     }catch (Exception e){
         e.printStackTrace();
         logger.error("Exception occure while converting the PipelineExecution :{}", e);

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.*;
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
 import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
@@ -38,6 +39,8 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	private static final String RESULT = "result";
 	private static final String STATUS = "status";
 	private OpaConfigProperties opaConfigProperties;
+	@Autowired
+	ObjectMapper objectMapper;
 
 	/* define configurable variables:
 	    opaUrl: OPA or OPA-Proxy base url
@@ -90,7 +93,6 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 
 			/* build our request to OPA */
 			RequestBody requestBody = RequestBody.create(JSON, finalInput);
-
 
 			logger.debug("OPA endpoint : {}", opaConfigProperties.getUrl());
 			String opaStringResponse = "{}";
@@ -218,10 +220,10 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	private JsonObject pipelineToJsonObject(Map<String, Object> pipeline) {
 		logger.debug("Start of the pipelineToJsonObject");
 		try {
-			String pipelineStr = gson.toJson(pipeline, Map.class);
+			String pipelineStr = objectMapper.writeValueAsString(pipeline);
 			logger.debug("End of the pipelineToJsonObject");
-			return gson.fromJson(pipelineStr, JsonObject.class);
-		}catch (JsonParseException e){
+			return objectMapper.convertValue(pipelineStr, JsonObject.class);
+		}catch (Exception e){
 			e.printStackTrace();
 			logger.error("Exception occure while converting the input pipline to Json :{}", e);
 			logger.debug("End of the pipelineToJsonObject");

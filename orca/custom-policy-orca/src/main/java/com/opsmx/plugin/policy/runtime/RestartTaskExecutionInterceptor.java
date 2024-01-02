@@ -2,7 +2,6 @@ package com.opsmx.plugin.policy.runtime;
 
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskExecutionInterceptor;
-import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.TaskExecution;
 import org.slf4j.Logger;
@@ -16,10 +15,10 @@ public class RestartTaskExecutionInterceptor implements TaskExecutionInterceptor
 
     private final Logger logger = LoggerFactory.getLogger(RestartTaskExecutionInterceptor.class);
 
-    private RestartPipelineTask restartPipelineTask;
+    private ValidationRestartPipeline restartPipelineValidationTask;
 
-    public RestartTaskExecutionInterceptor(RestartPipelineTask restartPipelineTask) {
-        this.restartPipelineTask = restartPipelineTask;
+    public RestartTaskExecutionInterceptor(ValidationRestartPipeline restartPipelineValidationTask) {
+        this.restartPipelineValidationTask = restartPipelineValidationTask;
     }
 
     @Override
@@ -30,9 +29,11 @@ public class RestartTaskExecutionInterceptor implements TaskExecutionInterceptor
         logger.debug("stage type :{}",stage.getType());
         List<TaskExecution> taskExecutions = stage.getTasks();
         taskExecutions.stream().forEach(taskExecution -> {logger.info("Task Execution :{}",taskExecution.getName());});
-        if (stage.getExecution()!=null && isValidStageType(stage.getType())) {
-            logger.info("Stage is not Manual Judgment ");
-            restartPipelineTask.execute(stage);
+        if (stage.getExecution()!=null && stage.getContext().containsKey("restartDetails")){
+            logger.info("Stage is being restarted, stage type : {}",stage.getType());
+               if(isValidStageType(stage.getType()) ){
+                restartPipelineValidationTask.execute(stage);
+            }
         }
 
         logger.debug("End of the beforeTaskExecution RestartTaskExecutionInterceptor");
@@ -48,6 +49,8 @@ public class RestartTaskExecutionInterceptor implements TaskExecutionInterceptor
         } else if (stageType.equalsIgnoreCase("runJob")) {
             return true;
         } else if (stageType.equalsIgnoreCase("startScript")) {
+            return true;
+        } else if (stageType.equalsIgnoreCase("jenkins")) {
             return true;
         }
         return false;

@@ -6,6 +6,7 @@ import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.Trigger;
+import com.netflix.spinnaker.orca.front50.Front50Service;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +26,8 @@ public class ValidationRestartPipeline {
     private static final String RESULT = "result";
     private static final String STATUS = "status";
     private OpaConfigProperties opaConfigProperties;
+
+    private Front50Service front50Service;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -46,9 +49,10 @@ public class ValidationRestartPipeline {
     private final OkHttpClient opaClient = new OkHttpClient();
 
     @Autowired
-    public ValidationRestartPipeline(OpaConfigProperties opaConfigProperties) {
+    public ValidationRestartPipeline(OpaConfigProperties opaConfigProperties, Front50Service front50Service) {
         logger.debug("Start of the ValidationRestartPipeline Constructor");
         this.opaConfigProperties = opaConfigProperties;
+        this.front50Service = front50Service;
         logger.debug("End of the ValidationRestartPipeline Constructor");
     }
 
@@ -59,10 +63,11 @@ public class ValidationRestartPipeline {
             logger.debug("End of the ValidationRestartPipeline Policy Validation");
             return;
         }
-        PipelineExecution pipelineExecution = stageExecution.getExecution();
+
         try {
+
             // Form input to opa
-            String finalInput = getOpaInput(pipelineExecution);
+            String finalInput = getOpaInput(getPipeline(stageExecution));
             logger.debug("Verifying with OPA input :{} ", finalInput);
             /* build our request to OPA */
             RequestBody requestBody = RequestBody.create(JSON, finalInput);
@@ -97,6 +102,20 @@ public class ValidationRestartPipeline {
         logger.debug("End of the ValidationRestartPipeline Policy Validation");
     }
 
+    private Map<String, Object>  getPipeline(StageExecution stageExecution){
+            PipelineExecution pipelineExecution = stageExecution.getExecution();
+
+            String applicationName = pipelineExecution.getApplication();
+            String pipelineId = pipelineExecution.getPipelineConfigId();
+            if (!StringUtils.isEmpty(pipelineId)) {
+                return front50Service.getPipelines(applicationName).stream()
+                        .filter(m -> m.containsKey("id"))
+                        .filter(m -> m.get("id").equals(pipelineId))
+                        .findFirst()
+                        .orElse(null);
+            }
+            return null;
+        }
     private boolean isChildPipeline(PipelineExecution pipelineExecution) {
         if (pipelineExecution.getTrigger() != null) {
             Trigger trigger = pipelineExecution.getTrigger();
@@ -149,18 +168,18 @@ public class ValidationRestartPipeline {
         });
     }
 
-    private String getOpaInput(PipelineExecution pipelineExecution) {
+    private String getOpaInput(Map<String, Object> pipeline) {
         logger.debug("Start of the getOpaInput");
         String application;
         String pipelineName;
         try {
-            Map newPipeline = pipelineToMapObject(pipelineExecution);
-            if (newPipeline.containsKey("application")) {
-                application = newPipeline.get("application").toString();
-                pipelineName = newPipeline.get("name").toString();
+            //Map newPipeline = pipelineToMapObject(pipeline);
+            if (pipeline.containsKey("application")) {
+                application = pipeline.get("application").toString();
+                pipelineName = pipeline.get("name").toString();
                 logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
                 logger.debug("End of the getOpaInput");
-                return objectMapper.writeValueAsString(addWrapper(addWrapper(newPipeline, "pipeline"), "input"));
+                return objectMapper.writeValueAsString(addWrapper(addWrapper(pipeline, "pipeline"), "input"));
             } else {
                 throw new ValidationException("The received pipeline doesn't have application field", null);
             }

@@ -46,6 +46,7 @@ dependencies {
   compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
   compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
   compileOnly "io.spinnaker.orca:orca-echo:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'

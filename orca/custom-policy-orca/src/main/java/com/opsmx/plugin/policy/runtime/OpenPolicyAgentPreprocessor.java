@@ -1,15 +1,13 @@
 package com.opsmx.plugin.policy.runtime;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.*;
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
 import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
-import groovy.json.JsonException;
-import org.apache.catalina.Pipeline;
+import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
@@ -17,15 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.HttpStatus;
 
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
 
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Nonnull;
@@ -78,8 +70,6 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			logger.debug("End of the Policy Validation");
 			return pipeline;
 		}
-		String finalInput = "{}";
-		int statusCode = 200;
 		try {
 			if(isChildPipeline(pipeline)){
 				logger.debug("This pipeline is a child pipeline and trigger by parent ");
@@ -87,7 +77,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 				return pipeline;
 			}
 			// Form input to opa
-			finalInput = getOpaInput(pipeline);
+			String finalInput = getOpaInput(pipeline);
 
 			logger.debug("Verifying {} with OPA", finalInput);
 
@@ -102,12 +92,19 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 				for (OpaConfigProperties.Policy policy : opaConfigProperties.getRuntime()) {
 					String opaFinalUrl = String.format("%s/%s", opaConfigProperties.getUrl().endsWith("/") ? opaConfigProperties.getUrl().substring(0, opaConfigProperties.getUrl().length() - 1) : opaConfigProperties.getUrl(), policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);
-					Map<String, Object> responseObject = doPost(opaFinalUrl, requestBody);
-					opaStringResponse = String.valueOf(responseObject.get(RESULT));
-					statusCode = Integer.valueOf(responseObject.get(STATUS).toString());
+					Response httpResponse = doPost(opaFinalUrl, requestBody);
+					opaStringResponse = httpResponse.body().string();
 					logger.debug("OPA response: {}", opaStringResponse);
-					logger.debug("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isProxy(), statusCode, opaConfigProperties.getResultKey());
-					validateOPAResponse(opaStringResponse, statusCode);
+					logger.debug("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isProxy(), httpResponse.code(), opaConfigProperties.getResultKey());
+					if (opaConfigProperties.isProxy()) {
+						if (httpResponse.code() != 200) {
+							throw new ValidationException(opaStringResponse, null);
+						}else{
+							validateOPAResponse(opaStringResponse);
+						}
+					} else {
+						validateOPAResponse(opaStringResponse);
+					}
 				}
 			}
 
@@ -137,33 +134,22 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		return false;
 	}
 
-	private void validateOPAResponse(String opaStringResponse, int statusCode) {
-		if (opaConfigProperties.isProxy()) {
-			if (statusCode == 401) {
-				JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+	private void validateOPAResponse(String opaStringResponse){
+		JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
+		JsonObject opaResult;
+		if (opaResponse.has(RESULT)) {
+			opaResult = opaResponse.get(RESULT).getAsJsonObject();
+			if (opaResult.has(opaConfigProperties.getResultKey())) {
 				StringBuilder denyMessage = new StringBuilder();
 				extractDenyMessage(opaResponse, denyMessage);
 				if (StringUtils.isNotBlank(denyMessage)) {
 					throw new ValidationException(denyMessage.toString(), null);
-				} else {
-					throw new ValidationException("There is no '" + opaConfigProperties.getResultKey() + "' field in the OPA response", null);
 				}
-			} else if (statusCode != 200) {
-				throw new ValidationException(opaStringResponse, null);
+			} else {
+				throw new ValidationException("There is no '" + opaConfigProperties.getResultKey() + "' field in the OPA response", null);
 			}
 		} else {
-			if (statusCode == 401) {
-				JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
-				StringBuilder denyMessage = new StringBuilder();
-				extractDenyMessage(opaResponse, denyMessage);
-				if (StringUtils.isNotBlank(denyMessage)) {
-					throw new ValidationException(denyMessage.toString(), null);
-				} else {
-					throw new ValidationException("There is no '" + opaConfigProperties.getResultKey() + "' field in the OPA response", null);
-				}
-			} else if (statusCode != 200) {
-				throw new ValidationException(opaStringResponse, null);
-			}
+			throw new ValidationException("There is no 'result' field in the OPA response", null);
 		}
 	}
 
@@ -196,88 +182,53 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		logger.debug("Start of the getOpaInput");
 		String application;
 		String pipelineName;
-		String finalInput = null;
-		JsonObject newPipeline = pipelineToJsonObject(pipeline);
-		if (newPipeline.has("application")) {
-			application = newPipeline.get("application").getAsString();
-			pipelineName = newPipeline.get("name").getAsString();
-			logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
-
-			finalInput = gson.toJson(addWrapper(addWrapper(newPipeline, "pipeline"), "input"));
-		} else {
-			throw new ValidationException("The received pipeline doesn't have application field", null);
+		try {
+			//JsonObject newPipeline = pipelineToJsonObject(pipeline);
+			if (pipeline.containsKey("application")) {
+				application = pipeline.get("application").toString();
+				pipelineName = pipeline.get("name").toString();
+				logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
+				logger.debug("End of the getOpaInput");
+				return objectMapper.writeValueAsString(addWrapper(addWrapper(pipeline, "pipeline"), "input"));
+			} else {
+				throw new ValidationException("The received pipeline doesn't have application field", null);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error("Exception occured converting the PipelineExecution :{}", e);
+			throw new ValidationException("Failed to convert the PipelineExecution to OPA Input :" + e.toString(), null);
 		}
-		logger.debug("End of the getOpaInput");
-		return finalInput;
 	}
 
-	private JsonObject addWrapper(JsonObject pipeline, String wrapper) {
-		JsonObject input = new JsonObject();
-		input.add(wrapper, pipeline);
+	private Map<String, Object> addWrapper(Map<String, Object> pipeline, String wrapper) {
+		Map<String, Object> input = new HashMap<>();
+		input.put(wrapper, pipeline);
 		return input;
 	}
 
 	private JsonObject pipelineToJsonObject(Map<String, Object> pipeline) {
 		logger.debug("Start of the pipelineToJsonObject");
 		try {
-			String pipelineStr = objectMapper.writeValueAsString(pipeline);
+			String pipelineStr = gson.toJson(pipeline, Map.class);
 			logger.debug("End of the pipelineToJsonObject");
-			return objectMapper.convertValue(pipelineStr, JsonObject.class);
+			return gson.fromJson(pipelineStr, JsonObject.class);
 		}catch (Exception e){
 			e.printStackTrace();
 			logger.error("Exception occure while converting the input pipline to Json :{}", e);
-			logger.debug("End of the pipelineToJsonObject");
 			throw new ValidationException("Converstion Failed while converting the input pipline to Json:" + e.toString(), null);
 		}
 	}
 
-	private Map<String, Object> doPost(String url, RequestBody requestBody) throws IOException {
+	private Response doPost(String url, RequestBody requestBody) throws IOException {
 		Request req = (new Request.Builder()).url(url).post(requestBody).build();
 		return getOPAResponse(url, req);
 	}
-
-	private Map<String, Object> getOPAResponse(String url, Request req) throws IOException {
-		Map<String, Object> apiResponse = new HashMap<>();
+	private Response getOPAResponse(String url, Request req) throws IOException {
 		Response httpResponse = this.opaClient.newCall(req).execute();
-		String response = httpResponse.body().string();
-		if (response == null) {
+		ResponseBody responseBody = httpResponse.body();
+		if (responseBody == null) {
 			throw new IOException("Http call yielded null response!! url:" + url);
 		}
-		apiResponse.put(RESULT, response);
-		logger.debug("## OPA Server response: {}", response);
-		JsonObject responseJson = gson.fromJson(response, JsonObject.class);
-		if (!responseJson.has(RESULT)) {
-			// No "result" field? It could be due to incorrect policy path
-			logger.error("No 'result' field in the response - {}. OPA api - {}", response, req);
-			apiResponse.put(STATUS, HttpStatus.BAD_REQUEST.value());
-			return apiResponse;
-		}
-		JsonObject resultJson = responseJson.get(RESULT).getAsJsonObject();
-		apiResponse.put(RESULT, gson.toJson(resultJson));
-		logger.debug("## resultJson : {}", resultJson);
-		if (!resultJson.has("deny")) {
-			// No "deny" field? that's weird
-			logger.error("No 'deny' field in the response - {}. OPA api - {}", response, req);
-			apiResponse.put(STATUS, HttpStatus.BAD_REQUEST.value());
-			return apiResponse;
-		}
-		if (resultJson.get("deny").getAsJsonArray().size() > 0) {
-			apiResponse.put(STATUS, HttpStatus.UNAUTHORIZED.value());
-		} else {
-			// Number of denies are zero
-			apiResponse.put(STATUS, HttpStatus.OK.value());
-		}
-		return apiResponse;
-	}
-	private boolean verifyPipelineSupports(@Nonnull Map<String, Object> pipeline){
-		JsonObject newPipeline = pipelineToJsonObject(pipeline);
-		JsonArray stages = newPipeline.get("stages").getAsJsonArray();
-		if(stages.size() ==1){
-			JsonObject stage = stages.get(0).getAsJsonObject();
-			if (stage.has("type") && stage.get("type").getAsString().equalsIgnoreCase("savePipeline")) {
-				return false;
-			}
-		}
-		return true;
+		return httpResponse;
 	}
 }

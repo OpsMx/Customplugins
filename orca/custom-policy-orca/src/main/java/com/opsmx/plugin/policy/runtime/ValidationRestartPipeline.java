@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,36 +47,34 @@ public class ValidationRestartPipeline {
 
     @Autowired
     public ValidationRestartPipeline(OpaConfigProperties opaConfigProperties) {
-        logger.debug("Start of the RestartPipelineTask Constructor");
+        logger.debug("Start of the ValidationRestartPipeline Constructor");
         this.opaConfigProperties = opaConfigProperties;
-        logger.debug("End of the RestartPipelineTask Constructor");
+        logger.debug("End of the ValidationRestartPipeline Constructor");
     }
 
     public void execute(@NotNull StageExecution stageExecution) {
-        logger.debug("Start of the RestartPipelineTask Policy Validation");
+        logger.debug("Start of the ValidationRestartPipeline Policy Validation");
         if (!opaConfigProperties.isEnabled()) {
             logger.info("OPA not enabled, returning");
-            logger.debug("End of the RestartPipelineTask Policy Validation");
+            logger.debug("End of the ValidationRestartPipeline Policy Validation");
             return;
         }
         PipelineExecution pipelineExecution = stageExecution.getExecution();
-        String finalInput = null;
-        Response httpResponse;
         try {
             // Form input to opa
-            finalInput = getOpaInput(pipelineExecution);
+            String finalInput = getOpaInput(pipelineExecution);
             logger.debug("Verifying with OPA input :{} ", finalInput);
             /* build our request to OPA */
             RequestBody requestBody = RequestBody.create(JSON, finalInput);
             logger.debug("OPA endpoint : {}", opaConfigProperties.getUrl());
-            String opaStringResponse;
+            String opaStringResponse ="{}";
 
             /* fetch the response from the spawned call execution */
             if (!opaConfigProperties.getRuntime().isEmpty()) {
                 for(OpaConfigProperties.Policy policy: opaConfigProperties.getRuntime()){
                     String opaFinalUrl = String.format("%s/%s", opaConfigProperties.getUrl().endsWith("/") ? opaConfigProperties.getUrl().substring(0, opaConfigProperties.getUrl().length() - 1) : opaConfigProperties.getUrl(), policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
                     logger.debug("opaFinalUrl: {}", opaFinalUrl);
-                    httpResponse = doPost(opaFinalUrl, requestBody);		;
+                    Response httpResponse = doPost(opaFinalUrl, requestBody);		;
                     opaStringResponse = httpResponse.body().string();
                     logger.info("OPA response: {}", opaStringResponse);
                     logger.debug("proxy enabled : {}, statuscode : {}, opaResultKey : {}", opaConfigProperties.isProxy(), httpResponse.code(), opaConfigProperties.getResultKey());
@@ -95,7 +94,7 @@ public class ValidationRestartPipeline {
             logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
             throw new ValidationException(e.toString(), null);
         }
-        logger.debug("End of the RestartPipelineTask Policy Validation");
+        logger.debug("End of the ValidationRestartPipeline Policy Validation");
     }
 
     private boolean isChildPipeline(PipelineExecution pipelineExecution) {
@@ -127,69 +126,61 @@ public class ValidationRestartPipeline {
         }
     }
 
-private void extractDenyMessage(JsonObject opaResponse, StringBuilder messagebuilder) {
-    Set<Map.Entry<String, JsonElement>> fields = opaResponse.entrySet();
-    fields.forEach(
-            field -> {
-                if (field.getKey().equalsIgnoreCase(opaConfigProperties.getResultKey())) {
-                    JsonArray resultKey = field.getValue().getAsJsonArray();
-                    if (resultKey.size() != 0) {
-                        resultKey.forEach(
-                                result -> {
-                                    if (StringUtils.isNotEmpty(messagebuilder)) {
-                                        messagebuilder.append(", ");
-                                    }
-                                    messagebuilder.append(result.getAsString());
-                                });
-                    }
-                } else if (field.getValue().isJsonObject()) {
-                    extractDenyMessage(field.getValue().getAsJsonObject(), messagebuilder);
-                } else if (field.getValue().isJsonArray()) {
-                    field.getValue().getAsJsonArray().forEach(obj -> {
-                        extractDenyMessage(obj.getAsJsonObject(), messagebuilder);
+    private void extractDenyMessage(JsonObject opaResponse, StringBuilder messagebuilder) {
+        Set<Map.Entry<String, JsonElement>> fields = opaResponse.entrySet();
+        fields.forEach(field -> {
+            if (field.getKey().equalsIgnoreCase(opaConfigProperties.getResultKey())) {
+                JsonArray resultKey = field.getValue().getAsJsonArray();
+                if (resultKey.size() != 0) {
+                    resultKey.forEach(result -> {
+                        if (StringUtils.isNotEmpty(messagebuilder)) {
+                            messagebuilder.append(", ");
+                        }
+                        messagebuilder.append(result.getAsString());
                     });
                 }
-            });
-}
-
-private String getOpaInput(PipelineExecution pipelineExecution) {
-    logger.debug("Start of the getOpaInput");
-    String application;
-    String pipelineName;
-    String finalInput = null;
-    JsonObject newPipeline = pipelineToJsonObject(pipelineExecution);
-    if (newPipeline.has("application")) {
-        application = newPipeline.get("application").getAsString();
-        pipelineName = newPipeline.get("name").getAsString();
-        logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
-
-        finalInput = gson.toJson(addWrapper(addWrapper(newPipeline, "pipeline"), "input"));
-    } else {
-        throw new ValidationException("The received pipeline doesn't have application field", null);
+            } else if (field.getValue().isJsonObject()) {
+                extractDenyMessage(field.getValue().getAsJsonObject(), messagebuilder);
+            } else if (field.getValue().isJsonArray()) {
+                field.getValue().getAsJsonArray().forEach(obj -> {
+                    extractDenyMessage(obj.getAsJsonObject(), messagebuilder);
+                });
+            }
+        });
     }
-    logger.debug("End of the getOpaInput");
-    return finalInput;
-}
 
-private JsonObject addWrapper(JsonObject pipeline, String wrapper) {
-    JsonObject input = new JsonObject();
-    input.add(wrapper, pipeline);
-    return input;
-}
-
-private JsonObject pipelineToJsonObject(PipelineExecution pipelineExecution) {
-    logger.debug("Start of the pipelineToJsonObject");
-    try {
-        String pipelineStr = objectMapper.writeValueAsString(pipelineExecution);
-        logger.debug("End of the pipelineToJsonObject");
-        return objectMapper.convertValue(pipelineStr, JsonObject.class);
-    }catch (Exception e){
-        e.printStackTrace();
-        logger.error("Exception occure while converting the PipelineExecution :{}", e);
-        logger.debug("End of the pipelineToJsonObject");
-        throw new ValidationException("Conversion Failed while converting the PipelineExecution to Json:" + e.toString(), null);
+    private String getOpaInput(PipelineExecution pipelineExecution) {
+        logger.debug("Start of the getOpaInput");
+        String application;
+        String pipelineName;
+        try {
+            Map newPipeline = pipelineToMapObject(pipelineExecution);
+            if (newPipeline.containsKey("application")) {
+                application = newPipeline.get("application").toString();
+                pipelineName = newPipeline.get("name").toString();
+                logger.debug("## application : {}, pipelineName : {}", application, pipelineName);
+                logger.debug("End of the getOpaInput");
+                return objectMapper.writeValueAsString(addWrapper(addWrapper(newPipeline, "pipeline"), "input"));
+            } else {
+                throw new ValidationException("The received pipeline doesn't have application field", null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("Exception occured converting the PipelineExecution :{}", e);
+            throw new ValidationException("Failed to convert the PipelineExecution to OPA Input :" + e.toString(), null);
+        }
     }
-}
+
+    private Map addWrapper(Map pipeline, String wrapper) {
+        Map input = new HashMap();
+        input.put(wrapper, pipeline);
+        return input;
+    }
+
+    private Map pipelineToMapObject(PipelineExecution pipelineExecution) {
+        logger.debug("Converting the Pipeline Execution to Map Object");
+        return objectMapper.convertValue(pipelineExecution, Map.class);
+    }
 
     private Response doPost(String url, RequestBody requestBody) throws IOException {
         Request req = (new Request.Builder()).url(url).post(requestBody).build();

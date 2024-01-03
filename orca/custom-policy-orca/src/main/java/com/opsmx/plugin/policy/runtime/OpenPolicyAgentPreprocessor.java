@@ -71,11 +71,11 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			return pipeline;
 		}
 		try {
-			if(isChildPipeline(pipeline)){
+			/*if(isChildPipeline(pipeline)){
 				logger.debug("This pipeline is a child pipeline and trigger by parent ");
 				logger.debug("End of the Policy Validation");
 				return pipeline;
-			}
+			}*/
 			// Form input to opa
 			String finalInput = getOpaInput(pipeline);
 

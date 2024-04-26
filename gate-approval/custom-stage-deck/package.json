@@ -30,11 +30,9 @@
     "prop-types": "15.6.1",
     "react": "16.14.0",
     "react-dom": "16.14.0",
-    "react-multi-select-component": "^4.2.5",
-    "multiselect-react-dropdown": "^2.0.22",
     "rxjs": "6.6.7",
     "utf-8-validate": "5.0.3",
-    "react-modal": "3.15.1"
+    "react-modal": "^3.15.1"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "18.0.0",

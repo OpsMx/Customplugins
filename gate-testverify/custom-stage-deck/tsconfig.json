@@ -1,6 +1,7 @@
 {
   "extends": "@spinnaker/pluginsdk/pluginconfig/tsconfig.json",
   "compilerOptions": {
+    "jsx": "react",
     "outDir": "build/dist",
     "rootDir": "src"
   }

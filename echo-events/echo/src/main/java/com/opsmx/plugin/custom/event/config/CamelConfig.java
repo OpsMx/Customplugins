@@ -52,9 +52,6 @@ public class CamelConfig {
         @Autowired
         private ISDEvent isdEvent;
 
-        @Autowired
-        private SsdConfig ssdConfig;
-
         @Override
         public void configure() throws Exception {
             camelRouteConfig.initRequiredValues();
@@ -67,11 +64,6 @@ public class CamelConfig {
                     .unmarshal().json(CDRouteInfo.class)
                     .bean(isdEvent, "handleEvent")
                     .end();
-
-            if (ssdConfig.isEnable())
-                from(EchoConstant.echoEventDirectEndPointUrlForSSD).id(EchoConstant.eventQueueIdForSSD)
-                        .to(camelRouteConfig.ssdConfigure())
-                        .end();
         }
     }
 

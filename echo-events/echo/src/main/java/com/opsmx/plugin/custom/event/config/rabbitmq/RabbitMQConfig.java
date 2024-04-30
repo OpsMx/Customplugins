@@ -5,7 +5,6 @@ import com.opsmx.plugin.custom.event.config.CamelConfig;
 import com.opsmx.plugin.custom.event.config.CamelRouteConfig;
 import com.opsmx.plugin.custom.event.config.MessageBrokerConfig;
 import com.opsmx.plugin.custom.event.config.SpinnakerConfig;
-import com.opsmx.plugin.custom.event.config.SsdConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +29,6 @@ public class RabbitMQConfig implements CamelRouteConfig {
     @Autowired
     private SpinnakerConfig spinnakerConfig;
 
-    @Autowired
-    private SsdConfig ssdConfig;
-
     private static final String exchange = "echo.events";
 
     @Value("${message-broker.apiProtocol:http}")
@@ -51,21 +47,21 @@ public class RabbitMQConfig implements CamelRouteConfig {
     @Override
     public String configure() {
 
-        return messageBrokerConfig.getEndpoint().getName()+":"+exchange+"?queue="
-                +spinnakerConfig.getName()+"&autoDelete=false&routingKey="
-                +spinnakerConfig.getName()+"&declare=false&durable=true&exchangeType=direct&hostname="
-                +messageBrokerConfig.getHost() +"&portNumber="+messageBrokerConfig.getPort()
-                +"&username="+messageBrokerConfig.getUsername()+"&password="+messageBrokerConfig.getPassword();
+        return messageBrokerConfig.getEndpoint().getName() + ":" + exchange + "?queue="
+                + spinnakerConfig.getName() + "&autoDelete=false&routingKey="
+                + spinnakerConfig.getName() + "&declare=false&durable=true&exchangeType=direct&hostname="
+                + messageBrokerConfig.getHost() + "&portNumber=" + messageBrokerConfig.getPort()
+                + "&username=" + messageBrokerConfig.getUsername() + "&password=" + messageBrokerConfig.getPassword();
     }
 
     @Override
     public String configureISDRoute() {
 
-        return messageBrokerConfig.getEndpoint().getName()+":"+exchange+"?queue="
-                +"isd-to-"+spinnakerConfig.getName()+"&autoDelete=false&routingKey="
-                +"isd-to-"+spinnakerConfig.getName()+"&declare=false&durable=true&exchangeType=direct&hostname="
-                +messageBrokerConfig.getHost() +"&portNumber="+messageBrokerConfig.getPort()
-                +"&username="+messageBrokerConfig.getUsername()+"&password="+messageBrokerConfig.getPassword();
+        return messageBrokerConfig.getEndpoint().getName() + ":" + exchange + "?queue="
+                + "isd-to-" + spinnakerConfig.getName() + "&autoDelete=false&routingKey="
+                + "isd-to-" + spinnakerConfig.getName() + "&declare=false&durable=true&exchangeType=direct&hostname="
+                + messageBrokerConfig.getHost() + "&portNumber=" + messageBrokerConfig.getPort()
+                + "&username=" + messageBrokerConfig.getUsername() + "&password=" + messageBrokerConfig.getPassword();
     }
 
     @Override
@@ -78,23 +74,13 @@ public class RabbitMQConfig implements CamelRouteConfig {
             String cmd = "curl -X DELETE " + deleteUrl;
             process = Runtime.getRuntime().exec(cmd);
             process.waitFor(3, TimeUnit.SECONDS);
-        } catch (Exception e){
+        } catch (Exception e) {
             logger.warn("Exception during deleting the RabbitMQ path : {}", e);
             throw e;
-        }
-        finally {
-            if (process!=null) {
+        } finally {
+            if (process != null) {
                 process.destroyForcibly();
             }
         }
-    }
-
-    @Override
-    public String ssdConfigure() {
-        return messageBrokerConfig.getEndpoint().getName() + ":" + exchange + "?queue="
-                + ssdConfig.getName() + "&autoDelete=false&routingKey="
-                + ssdConfig.getName() + "&declare=true&durable=true&exchangeType=direct&hostname="
-                + messageBrokerConfig.getHost() + "&portNumber=" + messageBrokerConfig.getPort()
-                + "&username=" + messageBrokerConfig.getUsername() + "&password=" + messageBrokerConfig.getPassword();
     }
 }

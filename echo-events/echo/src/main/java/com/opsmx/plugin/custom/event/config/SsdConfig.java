@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "ssd")
 public class SsdConfig {
     private String name;
-    private Boolean enable = false;
+    private Boolean enable;
 
     public String getName() {
         return name;

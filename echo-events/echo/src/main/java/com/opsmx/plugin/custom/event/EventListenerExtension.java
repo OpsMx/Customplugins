@@ -1,15 +1,12 @@
 package com.opsmx.plugin.custom.event;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.spinnaker.echo.api.events.Event;
 import com.netflix.spinnaker.echo.api.events.EventListener;
 import com.netflix.spinnaker.kork.plugins.api.spring.ExposeToApp;
 import com.opsmx.plugin.custom.event.config.CamelConfig;
 import com.opsmx.plugin.custom.event.config.SpinnakerConfig;
-import com.opsmx.plugin.custom.event.config.SsdConfig;
 import com.opsmx.plugin.custom.event.constants.EchoConstant;
 import org.apache.camel.CamelContext;
 import org.apache.camel.ProducerTemplate;
@@ -20,8 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-
 import java.util.*;
 
 @Primary

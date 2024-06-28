@@ -357,6 +357,10 @@ export function VisibilityApprovalConfig(props: IStageConfigProps) {
           const findIndex = accountsOptions.findIndex((specificAccountOption: any) => specificAccountOption[connectorName.toLowerCase()] == connectorName.toLowerCase());
           if (findIndex < 0) {
             let temp: any = {};
+             // For github connectors, supporting data that has only token  
+            if(connectorName.toLowerCase() == 'github') 
+              response = response.filter((acc : any) => acc.configurationFields.hasOwnProperty('token'))
+
             temp[connectorName.toLowerCase()] = response;
 
             let options = JSON.parse(localStorage.getItem('accountList')) ? JSON.parse(localStorage.getItem('accountList')) : [];

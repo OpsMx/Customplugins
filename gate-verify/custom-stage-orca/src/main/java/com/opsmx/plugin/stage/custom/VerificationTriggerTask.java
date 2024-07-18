@@ -93,7 +93,9 @@ public class VerificationTriggerTask implements Task {
 			return triggerAnalysis(stage);
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
-		} catch (Exception e) {
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(e);
+		}catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -107,8 +109,15 @@ public class VerificationTriggerTask implements Task {
 		String stringParam = gson.toJson(stage.getContext().get("parameters"), Map.class);
 		logger.debug("Verification GATE parameters : {}", stringParam);
 		JsonObject parameters = gson.fromJson(stringParam, JsonObject.class);
-		verifyStageParams(parameters, gateModel);
-
+		try {
+			verifyStageParams(parameters, gateModel);
+		} catch (IllegalArgumentException e) {
+			outputs.put(OesConstants.EXCEPTION, String.format("Verification trigger analysis failed as mandatory parameters are missed: %s", e));
+			outputs.put(OesConstants.OVERALL_SCORE, 0.0);
+			outputs.put(OesConstants.OVERALL_RESULT, "Fail");
+			outputs.put(OesConstants.TRIGGER, OesConstants.FAILED);
+			return TaskResult.builder(ExecutionStatus.TERMINAL).context(contextMap).outputs(outputs).build();
+		}
 		String triggerUrl = getTriggerURL(stage, outputs);
 		if (triggerUrl == null) {
 			return TaskResult.builder(ExecutionStatus.TERMINAL)
@@ -205,8 +214,11 @@ public class VerificationTriggerTask implements Task {
 				!parameters.has(MINICANARYRESULT) || parameters.get(MINICANARYRESULT).getAsString().isEmpty() || parameters.get(MINICANARYRESULT) == null) {
 			throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
 		}
-		if (!parameters.has(BASELINESTARTTIME) || !parameters.has(CANARYSTARTTIME)) {
-			throw new IllegalArgumentException("Verification gate in ISD requires baseline and canary start time for analysis");
+		if(parameters.get("baselineRealTime").getAsString().equals("false") && (!parameters.has(BASELINESTARTTIME) || parameters.get(BASELINESTARTTIME) == null || parameters.get(BASELINESTARTTIME).getAsString().isEmpty())) {
+			throw new IllegalArgumentException("Verification gate in ISD requires baseline start time for analysis");
+		}
+		if(parameters.get("canaryRealTime").getAsString().equals("false") && (!parameters.has(CANARYSTARTTIME) || parameters.get(CANARYSTARTTIME) == null || parameters.get(CANARYSTARTTIME).getAsString().isEmpty())){
+			throw new IllegalArgumentException("Verification gate in ISD requires canary start time for analysis");
 		}
 	}
 

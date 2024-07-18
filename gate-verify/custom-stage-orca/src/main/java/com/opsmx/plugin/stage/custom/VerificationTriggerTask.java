@@ -214,10 +214,10 @@ public class VerificationTriggerTask implements Task {
 				!parameters.has(MINICANARYRESULT) || parameters.get(MINICANARYRESULT).getAsString().isEmpty() || parameters.get(MINICANARYRESULT) == null) {
 			throw new IllegalArgumentException("Verification gate in ISD, mandatory fields are missing. Please recheck the stage");
 		}
-		if(parameters.get("baselineRealTime").getAsString().equals("false") && (!parameters.has(BASELINESTARTTIME) || parameters.get(BASELINESTARTTIME) == null || parameters.get(BASELINESTARTTIME).getAsString().isEmpty())) {
+		if(parameters.get("baselineRealTime").getAsString().equals("false") && !parameters.has(BASELINESTARTTIME) && (parameters.get(BASELINESTARTTIME) == null || parameters.get(BASELINESTARTTIME).getAsString().isEmpty())) {
 			throw new IllegalArgumentException("Verification gate in ISD requires baseline start time for analysis");
 		}
-		if(parameters.get("canaryRealTime").getAsString().equals("false") && (!parameters.has(CANARYSTARTTIME) || parameters.get(CANARYSTARTTIME) == null || parameters.get(CANARYSTARTTIME).getAsString().isEmpty())){
+		if(parameters.get("canaryRealTime").getAsString().equals("false") && !parameters.has(CANARYSTARTTIME) && (parameters.get(CANARYSTARTTIME) == null || parameters.get(CANARYSTARTTIME).getAsString().isEmpty())){
 			throw new IllegalArgumentException("Verification gate in ISD requires canary start time for analysis");
 		}
 	}

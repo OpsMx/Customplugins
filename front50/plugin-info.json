@@ -1,0 +1,17 @@
+{
+    "id": "Opsmx.StaticPolicyPlugin",
+    "description": "An example of a PF4J-based plugin that provides a custom pipeline stage.",
+    "provider": "https://github.com/opsmx",
+    "releases": [
+        {
+            "version": "v1.0.1-SNAPSHOT",
+            "date": "2023-12-18T14:37:54.207518Z",
+            "requires": "front50>=0.0.0",
+            "sha512sum": "b1c6512e1b3975b2c29bcc20d37b6d5d422e78983879d9d2c8f548b6f3c205eda929b12888b7a7b13b47f85967cb6b73f20f4e700ee2ee56380e7b613d9ad261",
+            "preferred": false,
+            "compatibility": [
+                
+            ]
+        }
+    ]
+}

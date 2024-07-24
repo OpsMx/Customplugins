@@ -13,11 +13,15 @@ import com.netflix.spinnaker.fiat.model.resources.Role;
 import com.netflix.spinnaker.fiat.shared.FiatService;
 import com.netflix.spinnaker.fiat.shared.FiatStatus;
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
+import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.front50.Front50Service;
+import com.netflix.spinnaker.orca.pipeline.util.ContextParameterProcessor;
+import com.netflix.spinnaker.orca.pipelinetemplate.V2Util;
+import com.netflix.spinnaker.orca.exceptions.PipelineTemplateValidationException;
 import groovy.util.logging.Slf4j;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
@@ -38,7 +42,6 @@ import java.util.*;
 public class PipelineRbacTask implements Task {
 
     public static final String STAGE_STATUS = "stageStatus";
-    private static final String APPLICATION2 = "application";
 
     @Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
     private String opaUrl;
@@ -75,10 +78,16 @@ public class PipelineRbacTask implements Task {
 
     private final Front50Service front50Service;
 
-    public PipelineRbacTask(Optional<FiatService> fiatService, Front50Service front50Service, FiatStatus fiatStatus) {
+    private final List<ExecutionPreprocessor> executionPreprocessors;
+
+    private final ContextParameterProcessor contextParameterProcessor;
+
+    public PipelineRbacTask(Optional<FiatService> fiatService, Front50Service front50Service, FiatStatus fiatStatus, Optional<List<ExecutionPreprocessor>> pipelinePreprocessors,  ContextParameterProcessor contextParameterProcessor) {
         this.fiatService = fiatService;
         this.front50Service = front50Service;
         this.fiatStatus = fiatStatus;
+        this.executionPreprocessors = pipelinePreprocessors.orElse(null);
+        this.contextParameterProcessor = contextParameterProcessor;
     }
 
     @NotNull
@@ -108,6 +117,7 @@ public class PipelineRbacTask implements Task {
             } else {
                 pipeline = (Map<String, Object>) stage.decodeBase64("/pipeline", Map.class);
             }
+            pipeline = getPlanPipeline(pipeline);
 
             Map<String, Object> existingPipeline = fetchExistingPipeline(pipeline);
 
@@ -166,7 +176,7 @@ public class PipelineRbacTask implements Task {
             /* fetch the response from the spawned call execution */
             httpResponse = doPost(opaFinalUrl, requestBody);
             opaStringResponse = httpResponse.body().string();
-            logger.info("OPA response: {}", opaStringResponse);
+            logger.debug("OPA response: {}", opaStringResponse);
             if (isOpaProxy) {
                 if (httpResponse.code() == 401 ) {
                     JsonObject opaResponse = gson.fromJson(opaStringResponse, JsonObject.class);
@@ -203,16 +213,26 @@ public class PipelineRbacTask implements Task {
     }
 
     private Map<String, Object> fetchExistingPipeline(Map<String, Object> newPipeline) {
+        Map<String, Object> oldPipeline = null;
         String applicationName = (String) newPipeline.get("application");
         String newPipelineID = (String) newPipeline.get("id");
         if (!StringUtils.isEmpty(newPipelineID)) {
-            return front50Service.getPipelines(applicationName).stream()
+            oldPipeline = front50Service.getPipelines(applicationName).stream()
                     .filter(m -> m.containsKey("id"))
                     .filter(m -> m.get("id").equals(newPipelineID))
                     .findFirst()
                     .orElse(null);
+            if(oldPipeline != null){
+                oldPipeline = getPlanPipeline(oldPipeline);
+            }
         }
-        return null;
+        return oldPipeline;
+    }
+    private Map<String, Object> getPlanPipeline(Map<String, Object> templatedPipeline){
+        if (V2Util.isV2Pipeline(templatedPipeline)) {
+            return V2Util.planPipeline(contextParameterProcessor, executionPreprocessors, templatedPipeline);
+        }
+       return templatedPipeline;
     }
 
     private void extractDenyMessage(JsonObject opaResponse, StringBuilder messageBuilder) {

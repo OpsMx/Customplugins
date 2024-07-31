@@ -110,8 +110,10 @@ public class RBACValidationTask implements Task {
 
 			if (stage.getType().equalsIgnoreCase("CreateApplication")) {
 				finalInput = getOpaInput(application, "createApp", groupList, stage.getExecution().getAuthentication().getUser());
-			} else {
+			} else if (stage.getType().equalsIgnoreCase("UpdateApplication")){
 				finalInput = getOpaInput(application, "updateApp", groupList, stage.getExecution().getAuthentication().getUser());
+			} else {
+				finalInput = getOpaInput(application, "deleteApp", groupList, stage.getExecution().getAuthentication().getUser());
 			}
 			
 

@@ -2,6 +2,7 @@ package com.opsmx.plugin.stage.custom;
 
 import javax.validation.constraints.NotNull;
 
+import com.netflix.spinnaker.orca.applications.tasks.VerifyApplicationHasNoDependenciesTask;
 import org.pf4j.Extension;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ public class DeleteApplicationStage implements StageDefinitionBuilder {
     public void taskGraph(@NotNull StageExecution stage, @NotNull TaskNode.Builder builder) {
 
         builder.withTask("validateApplication", RBACValidationTask.class)
+                .withTask("verifyNoDependencies", VerifyApplicationHasNoDependenciesTask.class)
                 .withTask("deleteTask", DeleteApplicationTask.class);
     }
 }

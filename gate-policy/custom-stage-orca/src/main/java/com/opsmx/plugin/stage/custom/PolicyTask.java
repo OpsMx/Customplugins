@@ -2,9 +2,15 @@ package com.opsmx.plugin.stage.custom;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -53,7 +59,19 @@ public class PolicyTask implements Task {
 
 	@Value("${isd.gate.url:http://oes-gate:8084}")
 	private String isdGateUrl;
-	
+
+	@Value("${policy.opa.failOpen:false}")
+	private boolean failOpen;
+
+	@Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
+	private String opaUrl;
+
+	@Value("${policy.opa.failOpenUrl:/v1/data}")
+	private String failOpenUrl;
+
+	@Value("${policy.opa.timeoutSeconds:30}")
+	private int timeoutSeconds;
+
 	private static final String PAYLOAD_CONSTRAINT = "payloadConstraint";
 
 	private static final String DENY = "deny";
@@ -104,6 +122,8 @@ public class PolicyTask implements Task {
 				createPolicyGate(stage, applicationModel);
 			}
 			triggerUrl = getTriggerURL(stage, outputs);
+		} catch (TimeoutException e) {
+			throw new RuntimeException(e);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -265,8 +285,20 @@ public class PolicyTask implements Task {
 		});
 	}
 
-	private String getTriggerURL(StageExecution stage, Map<String, Object> outputs) throws UnsupportedEncodingException {
+	private String getTriggerURL(StageExecution stage, Map<String, Object> outputs) throws UnsupportedEncodingException, TimeoutException {
 
+		if (failOpen) {
+			logger.info("FailOpen is true, triggering failOpenUrl: " + failOpenUrl);
+			HttpResponse<String> response = callOpaWithTimeout();
+
+			if (response != null && response.statusCode() == 200) {
+				logger.info("FailOpen URL succeeded, continuing execution by getting the trigger url");
+
+			} else {
+				logger.warn("FailOpen URL failed, terminating stage.");
+				throw new RuntimeException("InValid FailOpenUrl provided.");
+			}
+		}
 		String triggerEndpoint = constructGateEnpoint(stage);
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		try {
@@ -467,4 +499,27 @@ public class PolicyTask implements Task {
 		}
 		return payloadConstraints;
 	}
+
+	private HttpResponse<String> callOpaWithTimeout() throws TimeoutException {
+		String opaFailOpenUrl = String.format("%s/%s", opaUrl.endsWith("/") ? opaUrl.substring(0, opaUrl.length() - 1) : opaUrl, failOpenUrl.startsWith("/") ? failOpenUrl.substring(1) : failOpenUrl);
+
+		String urlWithTimeout = String.format("%s?timeout=%d", opaFailOpenUrl, timeoutSeconds);
+
+		HttpClient client = HttpClient.newBuilder()
+				.connectTimeout(Duration.ofSeconds(timeoutSeconds))
+				.build();
+
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(urlWithTimeout))
+				.timeout(Duration.ofSeconds(timeoutSeconds))
+				.GET()
+				.build();
+
+		try {
+			return client.send(request, HttpResponse.BodyHandlers.ofString());
+		} catch (IOException | InterruptedException e) {
+			logger.error("Connection timed out while reaching OPA at {}", opaFailOpenUrl);
+			throw new TimeoutException("Failed to get the trigger endpoint due to OPA server connectivity issue. OPA connection timed out after " + timeoutSeconds + " seconds");
+		}	}
+
 }

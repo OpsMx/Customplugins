@@ -96,6 +96,10 @@ public class PolicyTask implements Task {
 
 	private static final String START_TIME = "startTime";
 
+	private static final String EXCEPTION = "exception";
+
+	private static final String FAILOPEN_FAILED = "failOpenFailed";
+
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	@Autowired
@@ -122,13 +126,20 @@ public class PolicyTask implements Task {
 				createPolicyGate(stage, applicationModel);
 			}
 			triggerUrl = getTriggerURL(stage, outputs);
-		} catch (TimeoutException e) {
-			throw new RuntimeException(e);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 		if (triggerUrl == null) {
 			return TaskResult.builder(ExecutionStatus.TERMINAL)
+					.context(contextMap)
+					.outputs(outputs)
+					.build();
+		} else if(triggerUrl.equalsIgnoreCase(FAILOPEN_FAILED)) {
+			outputs.put(STATUS, "DENY");
+			outputs.put("REASON", String.format("Failed to get the trigger endpoint due to OPA server connectivity issue. OPA connection timed out after %d seconds", timeoutSeconds));
+			outputs.put(EXCEPTION, String.format("Failed to get the trigger endpoint due to OPA server connectivity issue. OPA connection timed out after :: %d seconds", timeoutSeconds));
+			outputs.put(EXECUTED_BY, stage.getExecution().getAuthentication().getUser());
+			return TaskResult.builder(ExecutionStatus.FAILED_CONTINUE)
 					.context(contextMap)
 					.outputs(outputs)
 					.build();
@@ -295,8 +306,8 @@ public class PolicyTask implements Task {
 				logger.info("FailOpen URL succeeded, continuing execution by getting the trigger url");
 
 			} else {
-				logger.warn("FailOpen URL failed, terminating stage.");
-				throw new RuntimeException("InValid FailOpenUrl provided.");
+				logger.warn("Triggering FailOpen URL failed due to OPA server connectivity issue");
+				return FAILOPEN_FAILED;
 			}
 		}
 		String triggerEndpoint = constructGateEnpoint(stage);
@@ -519,7 +530,7 @@ public class PolicyTask implements Task {
 			return client.send(request, HttpResponse.BodyHandlers.ofString());
 		} catch (IOException | InterruptedException e) {
 			logger.error("Connection timed out while reaching OPA at {}", opaFailOpenUrl);
-			throw new TimeoutException("Failed to get the trigger endpoint due to OPA server connectivity issue. OPA connection timed out after " + timeoutSeconds + " seconds");
+			return null;
 		}	}
 
 }

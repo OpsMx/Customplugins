@@ -62,20 +62,18 @@ public class PolicyTask implements Task {
 	@Value("${isd.gate.url:http://oes-gate:8084}")
 	private String isdGateUrl;
 
-	@Value("${policy.opa.failOpen:false}")
+	@Value("${policy.opa.failopen.enabled:false}")
 	private boolean failOpen;
 
 	@Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
 	private String opaSvcUrl;
 
-	@Value("${policy.opa.failOpenUrl:http://opa:8181/v1/data}")
-	private String opaUrl;
+	@Value("${policy.opa.failopen.timeout:10}")
+	private int timeoutSeconds;
 
 	@Value("${policy.opa.failOpenLocation:/v1/opa/failOpenReq}")
 	private String failOpenReq;
 
-	@Value("${policy.opa.timeoutSeconds:10}")
-	private int timeoutSeconds;
 
 	private static final String PAYLOAD_CONSTRAINT = "payloadConstraint";
 
@@ -144,8 +142,8 @@ public class PolicyTask implements Task {
 				String triggerPayload = getPayloadString(stage, outputs);
 				outputs.put(TRIGGER_JSON, String.format("Payload json - %s", triggerPayload));
 				outputs.put(STATUS, "None");
-				outputs.put("REASON", "The OPA Fail-Open feature has allowed the process to continue to the next stage despite an OPA server connectivity issue.");
-				outputs.put(EXCEPTION, String.format("The OPA Fail-Open feature has allowed the process to continue to the next stage despite an OPA server connectivity issue. Timed out after %d seconds", +timeoutSeconds));
+				outputs.put("REASON", "Failed to connect to the OPA server but OPA fail-open feature allow to proceed.");
+				outputs.put(EXCEPTION, String.format("Failed to connect to the OPA server but OPA fail-open feature allow to proceed."));
 				outputs.put(EXECUTED_BY, stage.getExecution().getAuthentication().getUser());
 				return TaskResult.builder(ExecutionStatus.FAILED_CONTINUE)
 						.context(contextMap)
@@ -316,8 +314,16 @@ public class PolicyTask implements Task {
 	private String getTriggerURL(StageExecution stage, Map<String, Object> outputs) throws UnsupportedEncodingException, TimeoutException {
 
 		if (failOpen) {
-			logger.info("FailOpen is true, triggering failOpenUrl: {}" + opaSvcUrl+failOpenReq);
-			String response = callOpaWithTimeout();
+			String policyName = "";
+			String stringParam = gson.toJson(stage.getContext().get("parameters"), Map.class);
+
+			JsonObject parameters = gson.fromJson(stringParam, JsonObject.class);
+
+			if(parameters.has("policyName"))
+				policyName = parameters.get("policyName").getAsString();
+			    logger.info("Policy stage with policy : {}", policyName);
+				logger.info("FailOpen is true, triggering failOpenUrl : {}" + opaSvcUrl+failOpenReq);
+				String response = callOpaWithTimeout(policyName);
 
 			if (response != null) {
 				logger.info("FailOpen URL succeeded, continuing execution by getting the trigger url");
@@ -528,14 +534,14 @@ public class PolicyTask implements Task {
 		return payloadConstraints;
 	}
 
-	private String callOpaWithTimeout() throws TimeoutException {
+	private String callOpaWithTimeout(String policyName) throws TimeoutException {
 		HttpURLConnection connection = null;
 		try {
 			String opaFailOpenUrl = String.format("%s/%s", opaSvcUrl.endsWith("/") ? opaSvcUrl.substring(0, opaSvcUrl.length() - 1) : opaSvcUrl, failOpenReq.startsWith("/") ? failOpenReq.substring(1) : failOpenReq);
 
-			String urlWithTimeout = String.format("%s?timeOutSeconds=%d&opaUrl=%s",
-					opaFailOpenUrl, timeoutSeconds, opaUrl);
-			logger.info("Triggering failOpenRequestUrl with timeout and opaUrl: {} {}", urlWithTimeout);
+			String urlWithTimeout = String.format("%s?timeOutSeconds=%d&policyName=%s",
+					opaFailOpenUrl, timeoutSeconds, policyName);
+			logger.info("Triggering failOpenRequestUrl with timeout and policyName: {} {}", urlWithTimeout);
 
 			URL url = new URL(urlWithTimeout);
 			connection = (HttpURLConnection) url.openConnection();

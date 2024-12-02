@@ -71,7 +71,7 @@ public class PolicyTask implements Task {
 	@Value("${policy.opa.failopen.timeout:10}")
 	private int timeoutSeconds;
 
-	@Value("${policy.opa.failOpenLocation:/v1/opa/failOpenReq}")
+	@Value("${policy.opa.failOpenLocation:/v1/opa/failOpen}")
 	private String failOpenReq;
 
 
@@ -141,7 +141,7 @@ public class PolicyTask implements Task {
 			try {
 				String triggerPayload = getPayloadString(stage, outputs);
 				outputs.put(TRIGGER_JSON, String.format("Payload json - %s", triggerPayload));
-				outputs.put(STATUS, "None");
+				outputs.put(STATUS, "");
 				outputs.put("REASON", "Failed to connect to the OPA server but OPA fail-open feature allow to proceed.");
 				outputs.put(EXCEPTION, String.format("Failed to connect to the OPA server but OPA fail-open feature allow to proceed."));
 				outputs.put(EXECUTED_BY, stage.getExecution().getAuthentication().getUser());
@@ -151,7 +151,7 @@ public class PolicyTask implements Task {
 						.build();
 			} catch (Exception e) {
 				logger.error("Error occurred while getting policy payload ", e);
-				outputs.put(STATUS, DENY);
+				outputs.put(STATUS, "");
 				outputs.put(MESSAGE, String.format("Policy failopen request failed with exception :: %s", e.getMessage()));
 				outputs.put(EXECUTED_BY, stage.getExecution().getAuthentication().getUser());
 				return TaskResult.builder(ExecutionStatus.TERMINAL)

@@ -321,8 +321,8 @@ public class PolicyTask implements Task {
 
 			if(parameters.has("policyName"))
 				policyName = parameters.get("policyName").getAsString();
-			    logger.info("Policy stage with policy : {}", policyName);
-				logger.info("FailOpen is true, triggering failOpenUrl : {}" + opaSvcUrl+failOpenReq);
+			    logger.debug("Policy stage with policy : {}", policyName);
+				logger.debug("FailOpen is true, triggering failOpenUrl : {}" + opaSvcUrl+failOpenReq);
 				String response = callOpaWithTimeout(policyName);
 
 			if (response != null) {

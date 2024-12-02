@@ -326,7 +326,7 @@ public class PolicyTask implements Task {
 				String response = callOpaWithTimeout(policyName);
 
 			if (response != null) {
-				logger.info("FailOpen URL succeeded, continuing execution by getting the trigger url");
+				logger.debug("FailOpen URL succeeded, continuing execution by getting the trigger url");
 
 			} else {
 				logger.warn("Process OPA failOpenRequest failed due to OPA server connectivity issue");
@@ -541,7 +541,7 @@ public class PolicyTask implements Task {
 
 			String urlWithTimeout = String.format("%s?timeOutSeconds=%d&policyName=%s",
 					opaFailOpenUrl, timeoutSeconds, policyName);
-			logger.info("Triggering failOpenRequestUrl with timeout and policyName: {} {}", urlWithTimeout);
+			logger.debug("Triggering failOpenRequestUrl with timeout and policyName: {} {}", urlWithTimeout);
 
 			URL url = new URL(urlWithTimeout);
 			connection = (HttpURLConnection) url.openConnection();

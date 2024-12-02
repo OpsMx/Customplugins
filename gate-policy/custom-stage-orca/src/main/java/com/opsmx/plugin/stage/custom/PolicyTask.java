@@ -1,10 +1,18 @@
 package com.opsmx.plugin.stage.custom;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import java.net.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -53,7 +61,20 @@ public class PolicyTask implements Task {
 
 	@Value("${isd.gate.url:http://oes-gate:8084}")
 	private String isdGateUrl;
-	
+
+	@Value("${policy.opa.failopen.enabled:false}")
+	private boolean failOpen;
+
+	@Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
+	private String opaSvcUrl;
+
+	@Value("${policy.opa.failopen.timeout:10}")
+	private int timeoutSeconds;
+
+	@Value("${policy.opa.failOpenLocation:/v1/opa/failOpen}")
+	private String failOpenReq;
+
+
 	private static final String PAYLOAD_CONSTRAINT = "payloadConstraint";
 
 	private static final String DENY = "deny";
@@ -77,6 +98,10 @@ public class PolicyTask implements Task {
 	private static final String APPLICATION2 = "application";
 
 	private static final String START_TIME = "startTime";
+
+	private static final String EXCEPTION = "exception";
+
+	private static final String FAILOPEN_FAILED = "failOpenFailed";
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -112,8 +137,29 @@ public class PolicyTask implements Task {
 					.context(contextMap)
 					.outputs(outputs)
 					.build();
+		} else if (triggerUrl.equalsIgnoreCase(FAILOPEN_FAILED)) {
+			try {
+				String triggerPayload = getPayloadString(stage, outputs);
+				outputs.put(TRIGGER_JSON, String.format("Payload json - %s", triggerPayload));
+				outputs.put(STATUS, "");
+				outputs.put("REASON", "Failed to connect to the OPA server but OPA fail-open feature allow to proceed.");
+				outputs.put(EXCEPTION, String.format("Failed to connect to the OPA server but OPA fail-open feature allow to proceed."));
+				outputs.put(EXECUTED_BY, stage.getExecution().getAuthentication().getUser());
+				return TaskResult.builder(ExecutionStatus.FAILED_CONTINUE)
+						.context(contextMap)
+						.outputs(outputs)
+						.build();
+			} catch (Exception e) {
+				logger.error("Error occurred while getting policy payload ", e);
+				outputs.put(STATUS, "");
+				outputs.put(MESSAGE, String.format("Policy failopen request failed with exception :: %s", e.getMessage()));
+				outputs.put(EXECUTED_BY, stage.getExecution().getAuthentication().getUser());
+				return TaskResult.builder(ExecutionStatus.TERMINAL)
+						.context(contextMap)
+						.outputs(outputs)
+						.build();
+			}
 		}
-
 		return verifyPolicy(stage, outputs, contextMap, triggerUrl);
 	}
 
@@ -265,8 +311,28 @@ public class PolicyTask implements Task {
 		});
 	}
 
-	private String getTriggerURL(StageExecution stage, Map<String, Object> outputs) throws UnsupportedEncodingException {
+	private String getTriggerURL(StageExecution stage, Map<String, Object> outputs) throws UnsupportedEncodingException, TimeoutException {
 
+		if (failOpen) {
+			String policyName = "";
+			String stringParam = gson.toJson(stage.getContext().get("parameters"), Map.class);
+
+			JsonObject parameters = gson.fromJson(stringParam, JsonObject.class);
+
+			if(parameters.has("policyName"))
+				policyName = parameters.get("policyName").getAsString();
+			    logger.debug("Policy stage with policy : {}", policyName);
+				logger.debug("FailOpen is true, triggering failOpenUrl : {}" + opaSvcUrl+failOpenReq);
+				String response = callOpaWithTimeout(policyName);
+
+			if (response != null) {
+				logger.debug("FailOpen URL succeeded, continuing execution by getting the trigger url");
+
+			} else {
+				logger.warn("Process OPA failOpenRequest failed due to OPA server connectivity issue");
+				return FAILOPEN_FAILED;
+			}
+		}
 		String triggerEndpoint = constructGateEnpoint(stage);
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		try {
@@ -467,4 +533,35 @@ public class PolicyTask implements Task {
 		}
 		return payloadConstraints;
 	}
+
+	private String callOpaWithTimeout(String policyName) throws TimeoutException {
+		HttpURLConnection connection = null;
+		try {
+			String opaFailOpenUrl = String.format("%s/%s", opaSvcUrl.endsWith("/") ? opaSvcUrl.substring(0, opaSvcUrl.length() - 1) : opaSvcUrl, failOpenReq.startsWith("/") ? failOpenReq.substring(1) : failOpenReq);
+
+			String urlWithTimeout = String.format("%s?timeOutSeconds=%d&policyName=%s",
+					opaFailOpenUrl, timeoutSeconds, policyName);
+			logger.debug("Triggering failOpenRequestUrl with timeout and policyName: {} {}", urlWithTimeout);
+
+			URL url = new URL(urlWithTimeout);
+			connection = (HttpURLConnection) url.openConnection();
+			connection.setConnectTimeout(timeoutSeconds * 1000);
+			connection.setReadTimeout(timeoutSeconds * 1000);
+			connection.setRequestMethod("GET");
+
+			int responseCode = connection.getResponseCode();
+			if (responseCode == HttpURLConnection.HTTP_OK) {
+				try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+					return reader.lines().collect(Collectors.joining("\n"));
+				}
+			} else {
+				logger.error("OPA returned error code: {}", responseCode);
+				return null;
+			}
+		} catch (IOException e) {
+			logger.error("Connection error while reaching OPA", e);
+			return null;
+		}
+	}
+
 }

@@ -37,9 +37,9 @@ spinnakerPlugin {
 dependencies {
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
-  compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
-  compileOnly "com.netflix.spinnaker.orca:orca-api:${orcaVersion}"
-  compileOnly "com.netflix.spinnaker.orca:orca-clouddriver:${orcaVersion}"
+  compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
+  compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-clouddriver:${orcaVersion}"
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
@@ -47,11 +47,11 @@ dependencies {
   compileOnly group: 'com.jakewharton.retrofit', name: 'retrofit1-okhttp3-client', version: '1.1.0'
   implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-  testImplementation(platform("com.netflix.spinnaker.orca:orca-bom:${orcaVersion}"))
-  testImplementation "com.netflix.spinnaker.orca:orca-api"
-  testImplementation "com.netflix.spinnaker.orca:orca-api-tck"
-  testImplementation "com.netflix.spinnaker.orca:orca-queue"
-  testImplementation "com.netflix.spinnaker.kork:kork-plugins-tck"
+  testImplementation(platform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
+  testImplementation "io.spinnaker.orca:orca-api:${orcaVersion}"
+  testImplementation "io.spinnaker.orca:orca-api-tck:${orcaVersion}"
+  testImplementation "io.spinnaker.orca:orca-queue:${orcaVersion}"
+  testImplementation "io.spinnaker.kork:kork-plugins-tck:${korkVersion}"
 
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.2"
   testImplementation "io.strikt:strikt-core:0.22.1"

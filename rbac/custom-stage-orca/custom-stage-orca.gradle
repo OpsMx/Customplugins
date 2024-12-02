@@ -54,10 +54,10 @@ dependencies {
   compileOnly group: 'com.jakewharton.retrofit', name: 'retrofit1-okhttp3-client', version: '1.1.0'
   implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-  testImplementation "io.spinnaker.orca:orca-api"
-  testImplementation "io.spinnaker.orca:orca-api-tck"
-  testImplementation "io.spinnaker.orca:orca-queue"
-  testImplementation "io.spinnaker.kork:kork-plugins-tck"
+  testImplementation "io.spinnaker.orca:orca-api:${orcaVersion}"
+  testImplementation "io.spinnaker.orca:orca-api-tck:${orcaVersion}"
+  testImplementation "io.spinnaker.orca:orca-queue:${orcaVersion}"
+  testImplementation "io.spinnaker.kork:kork-plugins-tck:${korkVersion}"
 
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.2"
   testImplementation "io.strikt:strikt-core:0.22.1"

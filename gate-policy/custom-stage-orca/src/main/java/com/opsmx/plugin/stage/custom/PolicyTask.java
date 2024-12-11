@@ -5,11 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.*;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -26,6 +22,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import com.netflix.spinnaker.orca.pipelinetemplate.V2Util;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -45,9 +42,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Lists;
 import com.netflix.spinnaker.kork.plugins.api.PluginComponent;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
+import com.netflix.spinnaker.orca.front50.Front50Service;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import com.netflix.spinnaker.orca.pipeline.util.ContextParameterProcessor;
+import com.netflix.spinnaker.orca.api.pipeline.ExecutionPreprocessor;
+
 
 import jline.internal.Log;
 import org.springframework.beans.factory.annotation.Value;
@@ -105,12 +106,21 @@ public class PolicyTask implements Task {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
+	private final Front50Service front50Service;
+
 	@Autowired
 	private ObjectMapper objectMapper = new ObjectMapper();
 
 	private final Gson gson = new Gson();
 
-	public PolicyTask() {
+	private final List<ExecutionPreprocessor> executionPreprocessors;
+
+	private final ContextParameterProcessor contextParameterProcessor;
+
+	public PolicyTask(Front50Service front50Service, List<ExecutionPreprocessor> executionPreprocessors, ContextParameterProcessor contextParameterProcessor) {
+		this.front50Service = front50Service;
+		this.executionPreprocessors = executionPreprocessors;
+		this.contextParameterProcessor =contextParameterProcessor;
 	}
 
 	@NotNull
@@ -238,6 +248,10 @@ public class PolicyTask implements Task {
 
 	private String getPayloadString(StageExecution stage, Map<String, Object> outputs) throws JsonProcessingException {
 		ObjectNode finalJson = objectMapper.createObjectNode();
+		String appName = stage.getExecution().getApplication();
+		String pipelineName = stage.getExecution().getName();
+		Map<String, Object> pipeline = fetchPipelineInfo(appName, pipelineName);
+		logger.info("Pipeline Info: {}", pipeline);
 
 		Object payloadContext = ((Map<String, Object>) stage.getContext().get("parameters")).get("payload");
 		Map<String, Object> parameterContext = (Map<String, Object>) stage.getContext().get("parameters");
@@ -258,13 +272,18 @@ public class PolicyTask implements Task {
 			finalJson = (ObjectNode) objectMapper.readTree(payload);
 		}
 		finalJson.put(START_TIME, System.currentTimeMillis());
-		finalJson.put(APPLICATION2, stage.getExecution().getApplication());
-		finalJson.put(NAME2, stage.getExecution().getName());
+		finalJson.put(APPLICATION2, appName);
+		finalJson.put(NAME2, pipelineName);
 		finalJson.put("stage", stage.getName());
 		finalJson.put("executionId", stage.getExecution().getId());
 		finalJson.put("gateId", outputs.get("gateId") != null ? (Integer) outputs.get("gateId") : null);
 		finalJson.set(TRIGGER, objectMapper.createObjectNode().put(USER2, stage.getExecution().getAuthentication().getUser()));
 
+		if (pipeline != null && pipeline.containsKey("tags")) {
+			JsonNode tagsNode = objectMapper.convertValue(pipeline.get("tags"), JsonNode.class);
+			finalJson.set("tags", tagsNode);
+			logger.info("Tags added to finalJson: {}", tagsNode);
+		}
 		ArrayNode payloadConstraintNode = objectMapper.createArrayNode();
 		if (parameterContext.get("gateSecurity") != null) {
 			String gateSecurityPayload = objectMapper.writeValueAsString(parameterContext.get("gateSecurity"));
@@ -282,6 +301,23 @@ public class PolicyTask implements Task {
 		finalJson.set(PAYLOAD_CONSTRAINT, payloadConstraintNode);
 
 		return objectMapper.writeValueAsString(finalJson);
+	}
+
+	private Map<String, Object> fetchPipelineInfo(String applicationName, String pipelineName) {
+		if (StringUtils.isEmpty(pipelineName)) {
+			return null;
+		}
+		return front50Service.getPipelines(applicationName).stream()
+				.filter(m -> pipelineName.equals(m.get("name")))
+				.findFirst()
+				.map(this::getPlanPipeline)
+				.orElse(null);
+	}
+
+	private Map<String, Object> getPlanPipeline(Map<String, Object> templatedPipeline) {
+		return V2Util.isV2Pipeline(templatedPipeline)
+				? V2Util.planPipeline(contextParameterProcessor, executionPreprocessors, templatedPipeline)
+				: templatedPipeline;
 	}
 
 	private void extractDenyMessage(JsonObject opaResponse, StringBuilder messageBuilder, String key) {

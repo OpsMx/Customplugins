@@ -251,7 +251,7 @@ public class PolicyTask implements Task {
 		String appName = stage.getExecution().getApplication();
 		String pipelineName = stage.getExecution().getName();
 		Map<String, Object> pipeline = fetchPipelineInfo(appName, pipelineName);
-		logger.info("Pipeline Info: {}", pipeline);
+		logger.debug("Pipeline Info: {}", pipeline);
 
 		Object payloadContext = ((Map<String, Object>) stage.getContext().get("parameters")).get("payload");
 		Map<String, Object> parameterContext = (Map<String, Object>) stage.getContext().get("parameters");
@@ -282,7 +282,7 @@ public class PolicyTask implements Task {
 		if (pipeline != null && pipeline.containsKey("tags")) {
 			JsonNode tagsNode = objectMapper.convertValue(pipeline.get("tags"), JsonNode.class);
 			finalJson.set("tags", tagsNode);
-			logger.info("Tags added to finalJson: {}", tagsNode);
+			logger.debug("Tags added to finalJson: {}", tagsNode);
 		}
 		ArrayNode payloadConstraintNode = objectMapper.createArrayNode();
 		if (parameterContext.get("gateSecurity") != null) {

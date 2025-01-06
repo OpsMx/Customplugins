@@ -40,6 +40,8 @@ dependencies {
   compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
   compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
   compileOnly "io.spinnaker.orca:orca-clouddriver:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'

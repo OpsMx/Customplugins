@@ -1,0 +1,17 @@
+{
+    "id": "Opsmx.RuntimePolicyPlugin",
+    "description": "An example of a PF4J-based plugin that provides a custom pipeline stage.",
+    "provider": "https://github.com/opsmx",
+    "releases": [
+        {
+            "version": "v1.0.1-SNAPSHOT",
+            "date": "2023-12-18T14:38:21.071875Z",
+            "requires": "orca>=0.0.0",
+            "sha512sum": "03c7787f41c522c42d31523afeb8316d7b8ea8e50aa5f45ae116baf2f0944b71c3f05a93e0812fc6d24c8555a97a5c72467d28286c48b56700e3ae3c334b57fe",
+            "preferred": false,
+            "compatibility": [
+                
+            ]
+        }
+    ]
+}

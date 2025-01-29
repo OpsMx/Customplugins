@@ -28,21 +28,25 @@ sourceSets {
 }
 
 spinnakerPlugin {
-  serviceName = "front50"
-  pluginClass = "com.opsmx.plugin.stage.custom.StaticPolicyPlugin"
-  requires="front50>=0.0.0"
+  serviceName = "orca"
+  pluginClass = "com.opsmx.plugin.policy.runtime.RuntimePolicyPlugin"
+  requires="orca>=0.0.0"
 }
 configurations {
-    // configuration that holds jars to include in the jar
-    extraLibs
+  // configuration that holds jars to include in the jar
+  extraLibs
 }
+
 
 dependencies {
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
   compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
   compileOnly "com.netflix.spinnaker.kork:kork-web:7.105.0"
-  compileOnly group: 'io.spinnaker.front50', name: 'front50-api', version: '2.27.3'
+  compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-echo:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
@@ -50,29 +54,17 @@ dependencies {
   compileOnly group: 'com.jakewharton.retrofit', name: 'retrofit1-okhttp3-client', version: '1.1.0'
   implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-
   testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
   testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
   testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
-  implementation("org.apache.commons:commons-lang3:3.0")
-  
-  implementation 'com.google.code.gson:gson:2.8.8'
-  /*extraLibs group: 'com.netflix.spinnaker.front50', name: 'front50-core', version: '2.23.0'
-  configurations.compile.extendsFrom(configurations.extraLibs)*/
 }
 
 configurations.all {
   resolutionStrategy.eachDependency { DependencyResolveDetails details ->
     if (details.requested.group == 'org.apache.logging.log4j') {
-      details.useVersion '2.16.0'
+      details.useVersion '2.17.1'
     }
   }
-}
-
-jar {
-    from {
-            configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
-        }
 }
 
 tasks.withType(Test) {

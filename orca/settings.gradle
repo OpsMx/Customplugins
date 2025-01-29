@@ -9,9 +9,9 @@ pluginManagement {
   }
 }
 
-rootProject.name = "Front50PolicyPlugin"
+rootProject.name = "OrcaPolicyPlugin"
 
-include "custom-stage-front50"
+include "custom-policy-orca"
 
 def setBuildFile(project) {
   project.buildFileName = "${project.name}.gradle"

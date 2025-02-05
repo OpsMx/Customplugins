@@ -7,10 +7,11 @@ import com.netflix.spinnaker.orca.front50.tasks.MonitorFront50Task;
 import com.netflix.spinnaker.orca.front50.tasks.SavePipelineTask;
 import com.netflix.spinnaker.orca.front50.tasks.SaveServiceAccountTask;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Nonnull;
-
+@ComponentScan({"com.opsmx.plugin.stage.custom"})
 @Component
 public class SavePipelineStage implements StageDefinitionBuilder {
 

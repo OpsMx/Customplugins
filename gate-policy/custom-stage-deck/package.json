@@ -5,7 +5,7 @@
   "module": "build/dist/index.js",
   "scripts": {
     "clean": "npx shx rm -rf build",
-    "build": "npm run clean && NODE_ENV=production rollup -c",
+    "build": "npm run clean && NODE_ENV=production  rollup -c",
     "watch": "rollup -c -w --no-watch.clearScreen",
     "postinstall": "check-plugin && check-peer-dependencies || true",
     "proxy": "dev-proxy",
@@ -23,6 +23,7 @@
     "@uirouter/core": "6.0.4",
     "@uirouter/react": "1.0.2",
     "bufferutil": "4.0.2",
+    "cheerio": "1.0.0",
     "graphql": "15.8.0",
     "lodash": "4.17.20",
     "lodash-es": "4.17.15",

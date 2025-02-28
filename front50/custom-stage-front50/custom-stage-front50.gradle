@@ -3,22 +3,26 @@ import org.yaml.snakeyaml.Yaml
 buildscript {
   repositories {
     mavenCentral()
+    maven {
+        url "https://artifactory.spinnaker.io/artifactory/spinnaker-releases/"
+        //allowInsecureProtocol = true  // Allows using HTTP if the server is not configured correctly
+    }
   }
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-    classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
+    //classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
   }
 }
 
 apply plugin: "io.spinnaker.plugin.service-extension"
 apply plugin: "maven-publish"
 apply plugin: "kotlin"
-apply plugin: "kotlin-kapt"
-apply plugin: "kotlin-spring"
+//apply plugin: "kotlin-kapt"
+//apply plugin: "kotlin-spring"
 
 repositories {
   mavenCentral()
-  jcenter()
+  //jcenter()
   maven { url "https://spinnaker-releases.bintray.com/jars" }
 }
 
@@ -39,11 +43,13 @@ configurations {
 }
 
 dependencies {
+   implementation "com.netflix.spinnaker.front50:front50-core:2.23.0"
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
   compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
   compileOnly 'com.netflix.spinnaker.kork:kork-web:7.105.0'
-  kapt "org.pf4j:pf4j:${pf4jVersion}"
+  implementation "org.pf4j:pf4j:${pf4jVersion}"
+  // kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
   compileOnly group: 'com.squareup.retrofit', name: 'converter-jackson', version: '1.9.0'

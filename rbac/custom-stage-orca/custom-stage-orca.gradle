@@ -47,7 +47,8 @@ dependencies {
   //compileOnly "com.netflix.spinnaker.fiat:fiat-api:1.26.0"
   compileOnly 'io.spinnaker.fiat:fiat-core:1.32.0'
   compileOnly "io.spinnaker.fiat:fiat-api:1.32.0"
-  kapt "org.pf4j:pf4j:${pf4jVersion}"
+  implementation "org.pf4j:pf4j:${pf4jVersion}"
+//kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
   compileOnly group: 'com.squareup.retrofit', name: 'converter-jackson', version: '1.9.0'

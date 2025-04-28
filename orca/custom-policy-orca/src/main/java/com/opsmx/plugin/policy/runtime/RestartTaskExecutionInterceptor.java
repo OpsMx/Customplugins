@@ -2,7 +2,6 @@ package com.opsmx.plugin.policy.runtime;
 
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskExecutionInterceptor;
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.TaskExecution;
 import org.slf4j.Logger;
@@ -34,25 +33,10 @@ public class RestartTaskExecutionInterceptor implements TaskExecutionInterceptor
         logger.debug("stage tasks :{}",stage.getTasks());
         List<TaskExecution> taskExecutions = stage.getTasks();
         taskExecutions.stream().forEach(taskExecution -> { logger.debug("Task Execution :{}",taskExecution.getName());});
-        if (stage.getExecution()!=null && stage.getContext().containsKey("restartDetails")){
+        if (stage.getExecution()!=null){
             logger.info("Stage is being restarted, stage type : {}",stage.getType());
                if(isValidStageType(stage.getType()) && !isRepeating(stage.getContext())){
                 restartPipelineValidationTask.execute(stage);
-            }
-        } else if (stage.getExecution()!=null && stage.getExecution().getCancellationReason() != null ){
-            logger.info("Failed pipeline got restarted :{} ",stage.getExecution().getCancellationReason());
-           // if(stage.isManualJudgmentType()){
-            if(isValidStageType(stage.getType())){
-                logger.info("***************************");
-                taskExecutions.stream().forEach(taskExecution -> {
-                    logger.debug("Task Execution :{}",taskExecution.getName());
-                    taskExecution.setStatus(ExecutionStatus.TERMINAL);
-                    taskExecution.setEndTime(System.currentTimeMillis());
-                });
-                stage.setStatus(ExecutionStatus.TERMINAL);
-                stage.getExecution().setStatus(ExecutionStatus.TERMINAL);
-                setCancelReason(stage);
-                stage.getContext().put("errors", stage.getExecution().getCancellationReason());
             }
         }
         /*else if (stage.getExecution()!=null && stage.getContext().containsKey("failPipeline")){
@@ -83,17 +67,7 @@ public class RestartTaskExecutionInterceptor implements TaskExecutionInterceptor
         return false;
     }
     private boolean isValidStageType(String stageType){
-        if (stageType.equalsIgnoreCase("manualJudgment")) {
-            return true;
-        } else if (stageType.equalsIgnoreCase("evaluateVariables")) {
-            return true;
-        } else if (stageType.equalsIgnoreCase("pipeline")) {
-            return true;
-        } else if (stageType.equalsIgnoreCase("runJob")) {
-            return true;
-        } else if (stageType.equalsIgnoreCase("startScript")) {
-            return true;
-        } else if (stageType.equalsIgnoreCase("jenkins")) {
+        if (stageType.equalsIgnoreCase("deploy")) {
             return true;
         }
         return false;

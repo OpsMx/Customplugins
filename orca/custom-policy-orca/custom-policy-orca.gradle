@@ -41,7 +41,7 @@ configurations {
 dependencies {
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
-  compileOnly "io.spinnaker..kork:kork-plugins-api:${korkVersion}"
+  compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
   compileOnly "io.spinnaker.kork:kork-web:7.105.0"
   compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
   compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"

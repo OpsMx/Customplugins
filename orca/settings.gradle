@@ -9,9 +9,9 @@ pluginManagement {
   }
 }
 
-rootProject.name = "OrcaPolicyPlugin"
+rootProject.name = "OrcaPipelineValidatePlugin"
 
-include "custom-policy-orca"
+include "custom-pipeline-validate-orca"
 
 def setBuildFile(project) {
   project.buildFileName = "${project.name}.gradle"

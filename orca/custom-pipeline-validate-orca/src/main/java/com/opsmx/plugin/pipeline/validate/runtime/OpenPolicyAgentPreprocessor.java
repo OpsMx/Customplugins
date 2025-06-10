@@ -76,6 +76,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			logger.info("Frequency of " + m.getKey() + " is " + m.getValue());
 			if(Integer.valueOf(m.getValue().toString() )> 1){
 				logger.info(" same stage ref Id  :{} used more than one time ",m.getValue());
+				throw new ValidationException("same stage ref Id  : "+m.getValue()+" used more than one time ", null);
 			}
 		}
 	}
@@ -83,7 +84,8 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	private void validateRequisiteStageRefIds(List<String> refIds, List<String> allRequisiteStageRefIds) {
 		for (String refId : allRequisiteStageRefIds) {
          if(!refIds.contains(refId)){
-			 logger.info(" stage ref Id  :{} not available ",refId);
+			 logger.info("stage ref Id  :{} not available ",refId);
+			 throw new ValidationException(" stage ref Id  :"+refId+" not available ", null);
 		 }
 		}
 	}

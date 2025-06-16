@@ -47,6 +47,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		logger.debug("Start of the Pipeline Validation");
 		logger.debug("input Pipeline :{}", pipeline);
 		if (!isPipelineValidateEnabled) {
+			throw new ValidationException("Pipeline Validation Enabled", null);
 			logger.info("Pipeline validation not enabled, returning");
 			logger.debug("End of the Pipeline Validation");
 			return pipeline;

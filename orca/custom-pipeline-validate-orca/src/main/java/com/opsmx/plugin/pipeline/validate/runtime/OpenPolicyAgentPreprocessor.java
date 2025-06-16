@@ -12,6 +12,7 @@ import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +31,9 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 
 	private final Gson gson = new Gson();
 
+	@Value("${pipeline.validate.enabled:false}")
+	private boolean isPipelineValidateEnabled;
+
 	@Override
 	public boolean supports(@Nonnull Map<String, Object> pipeline, @Nonnull Type type){
 		logger.debug("ExecutionPreprocessor Type :{}",type);
@@ -42,6 +46,11 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	public Map<String, Object> process(@Nonnull Map<String, Object> pipeline){
 		logger.debug("Start of the Pipeline Validation");
 		logger.debug("input Pipeline :{}", pipeline);
+		if (!isPipelineValidateEnabled) {
+			logger.info("Pipeline validation not enabled, returning");
+			logger.debug("End of the Pipeline Validation");
+			return pipeline;
+		}
 		try {
            List stages = (ArrayList)pipeline.get("stages");
 		   List<String> refIds = new ArrayList<String>();

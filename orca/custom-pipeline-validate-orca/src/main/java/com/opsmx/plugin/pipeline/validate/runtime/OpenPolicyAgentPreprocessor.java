@@ -49,8 +49,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		if (!isPipelineValidateEnabled) {
 			logger.info("Pipeline validation not enabled, returning");
 			logger.debug("End of the Pipeline Validation");
-			throw new ValidationException("Pipeline Validation Enabled", null);
-			//return pipeline;
+			return pipeline;
 		}
 		try {
            List stages = (ArrayList)pipeline.get("stages");
@@ -64,6 +63,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 		   }
            validateRefIds(refIds);
 		   validateRequisiteStageRefIds(refIds,allRequisiteStageRefIds);
+		   validateRefIdAndRequisiteStageRefIds(stages);
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.error("Exception occured : {}", e);
@@ -97,6 +97,18 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			 logger.info("Pipeline stage ref Id  :{} is not available ",refId);
 			 throw new ValidationException("Pipeline stage ref Id  :"+refId+" is not available ", null);
 		 }
+		}
+	}
+
+	private void validateRefIdAndRequisiteStageRefIds(List stages) {
+		for(Object stageObject : stages){
+			Map<String, Object> stage = (HashMap) stageObject;
+			String refId = stage.get("refId").toString();
+			List<String> requisiteStageRefIds = (ArrayList)stage.get("requisiteStageRefIds");
+			if(requisiteStageRefIds.contains(refId)){
+				logger.info("Pipeline stage ref Id  :{} have in requisiteStageRefIds",refId);
+				throw new ValidationException("Pipeline stage ref Id  :"+refId+" have in requisiteStageRefIds",null);
+			}
 		}
 	}
 }

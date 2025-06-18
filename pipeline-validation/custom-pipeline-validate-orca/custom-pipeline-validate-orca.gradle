@@ -1,0 +1,72 @@
+import org.yaml.snakeyaml.Yaml
+
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
+  }
+}
+
+apply plugin: "io.spinnaker.plugin.service-extension"
+apply plugin: "maven-publish"
+apply plugin: "kotlin"
+apply plugin: "kotlin-kapt"
+apply plugin: "kotlin-spring"
+
+repositories {
+  mavenCentral()
+  jcenter()
+}
+
+sourceSets {
+  main {
+    java { srcDirs = ['src/main/java'] }
+  }
+}
+
+spinnakerPlugin {
+  serviceName = "orca"
+  pluginClass = "com.opsmx.plugin.pipeline.validate.runtime.RuntimePipelineValidatePlugin"
+  requires="orca>=0.0.0"
+}
+configurations {
+  // configuration that holds jars to include in the jar
+  extraLibs
+}
+
+
+dependencies {
+  compileOnly "org.pf4j:pf4j:${pf4jVersion}"
+  compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
+  compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
+  compileOnly "io.spinnaker.kork:kork-web:7.105.0"
+  compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-echo:${orcaVersion}"
+  compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
+  kapt "org.pf4j:pf4j:${pf4jVersion}"
+
+  compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
+  compileOnly group: 'com.squareup.retrofit', name: 'converter-jackson', version: '1.9.0'
+  compileOnly group: 'com.jakewharton.retrofit', name: 'retrofit1-okhttp3-client', version: '1.1.0'
+  implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
+
+  testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
+  testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
+  testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
+}
+
+configurations.all {
+  resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+    if (details.requested.group == 'org.apache.logging.log4j') {
+      details.useVersion '2.17.1'
+    }
+  }
+}
+
+tasks.withType(Test) {
+  useJUnitPlatform()
+}

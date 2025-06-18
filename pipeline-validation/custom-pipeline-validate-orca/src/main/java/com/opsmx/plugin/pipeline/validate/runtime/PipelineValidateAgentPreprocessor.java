@@ -25,7 +25,7 @@ import java.util.TreeMap;
 @Extension
 @Component
 @ComponentScan("com.opsmx.plugin.pipeline.runtime")
-public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, SpinnakerExtensionPoint {
+public class PipelineValidateAgentPreprocessor implements ExecutionPreprocessor, SpinnakerExtensionPoint {
 
 	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentPreprocessor.class);
 

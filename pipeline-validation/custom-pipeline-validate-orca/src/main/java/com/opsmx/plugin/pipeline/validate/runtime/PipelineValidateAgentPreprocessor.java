@@ -27,7 +27,7 @@ import java.util.TreeMap;
 @ComponentScan("com.opsmx.plugin.pipeline.runtime")
 public class PipelineValidateAgentPreprocessor implements ExecutionPreprocessor, SpinnakerExtensionPoint {
 
-	private final Logger logger = LoggerFactory.getLogger(OpenPolicyAgentPreprocessor.class);
+	private final Logger logger = LoggerFactory.getLogger(PipelineValidateAgentPreprocessor.class);
 
 	private final Gson gson = new Gson();
 

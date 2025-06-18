@@ -66,8 +66,8 @@ public class PipelineValidateAgentPreprocessor implements ExecutionPreprocessor,
 		   validateRefIdAndRequisiteStageRefIds(stages);
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Exception occured : {}", e);
-			logger.error("Some thing wrong While validate pipeline input: {}", pipeline);
+			//logger.error("Exception occured : {}", e);
+			logger.debug("Some thing wrong While validate pipeline input: {}", pipeline);
 			logger.debug("End of the Pipeline Validation");
 			throw new ValidationException(e.getMessage(), null);
 		}

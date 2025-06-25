@@ -85,8 +85,8 @@ public class PipelineValidateAgentPreprocessor implements ExecutionPreprocessor,
 		for (Map.Entry m : tmap.entrySet()) {
 			logger.info("Frequency of " + m.getKey() + " is " + m.getValue());
 			if(Integer.valueOf(m.getValue().toString() )> 1){
-				logger.debug(" same stage ref Id  :{} used more than one time ",m.getValue());
-				throw new ValidationException("Pipeline has been used same stage ref Id  : "+m.getValue()+" more than one time, Update pipeline stage ref Id ", null);
+				logger.debug(" same stage ref Id  :{} used more than one time ",m.getKey());
+				throw new ValidationException("Pipeline has been used same stage ref Id  : "+m.getKey()+" more than one time, Update pipeline stage ref Id ", null);
 			}
 		}
 	}

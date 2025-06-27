@@ -123,8 +123,8 @@ public class PipelineValidateAgentPreprocessor implements ExecutionPreprocessor,
 	}
 	private void throwPipelineValidationException(List<String> stageRefIds, String errorMsg){
 		if(!stageRefIds.isEmpty() && stageRefIds.size() > 0) {
-			logger.debug("errorMsg"+String.join(",", stageRefIds));
-			throw new ValidationException("errorMsg" + String.join(",", stageRefIds), null);
+			logger.debug(errorMsg+String.join(",", stageRefIds));
+			throw new ValidationException(errorMsg + String.join(",", stageRefIds), null);
 		}
 	}
 }

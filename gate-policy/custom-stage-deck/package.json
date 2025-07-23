@@ -7,7 +7,6 @@
     "clean": "npx shx rm -rf build",
     "build": "npm run clean && NODE_ENV=production  rollup -c",
     "watch": "rollup -c -w --no-watch.clearScreen",
-    "postinstall": "check-plugin && check-peer-dependencies || true",
     "proxy": "dev-proxy",
     "lint": "eslint --ext js,jsx,ts,tsx src",
     "develop": "npm run clean && run-p watch proxy",

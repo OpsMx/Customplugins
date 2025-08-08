@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.ComponentScan;
 
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
@@ -50,7 +51,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	private final OkHttpClient opaClient = new OkHttpClient();
 	@Autowired
-	public OpenPolicyAgentPreprocessor(OpaConfigProperties opaConfigProperties) {
+	public OpenPolicyAgentPreprocessor(@Qualifier("opaConfigProperties") OpaConfigProperties opaConfigProperties) {
         this.opaConfigProperties = opaConfigProperties;
 	}
 	@Override

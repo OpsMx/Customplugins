@@ -18,7 +18,6 @@ apply plugin: "kotlin-spring"
 
 repositories {
   mavenCentral()
-  jcenter()
 }
 
 sourceSets {
@@ -40,9 +39,9 @@ configurations {
 dependencies {
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
-  compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
-  compileOnly "com.netflix.spinnaker.kork:kork-web:7.105.0"
-  compileOnly group: 'io.spinnaker.front50', name: 'front50-api', version: '2.27.3'
+  compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
+  compileOnly "io.spinnaker.kork:kork-web:${korkVersion}"
+  compileOnly group: 'io.spinnaker.front50', name: 'front50-api', version: ${front50Version}
   kapt "org.pf4j:pf4j:${pf4jVersion}"
 
   compileOnly group: 'com.squareup.retrofit', name: 'retrofit', version: '1.9.0'
@@ -74,7 +73,9 @@ jar {
             configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
         }
 }
-
+javaCompiler = javaToolchains.compilerFor {
+  languageVersion = JavaLanguageVersion.of(17)
+}
 tasks.withType(Test) {
   useJUnitPlatform()
 }

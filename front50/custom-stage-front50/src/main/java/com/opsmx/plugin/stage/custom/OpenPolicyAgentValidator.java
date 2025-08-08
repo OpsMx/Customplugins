@@ -10,7 +10,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+
 @Extension
 @Component
 @ComponentScan("com.opsmx.plugin.stage.custom")
@@ -35,7 +37,8 @@ public class OpenPolicyAgentValidator implements PipelineValidator, SpinnakerExt
 
 	private OpaConfigProperties opaConfigProperties;
 
-	public OpenPolicyAgentValidator(OpaConfigProperties opaConfigProperties) {
+	@Autowired
+	public OpenPolicyAgentValidator(@Qualifier("opaConfigProperties")OpaConfigProperties opaConfigProperties) {
 		this.opaConfigProperties = opaConfigProperties;
 	}
 

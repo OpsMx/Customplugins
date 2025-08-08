@@ -18,7 +18,6 @@ apply plugin: "kotlin-spring"
 
 repositories {
   mavenCentral()
-  jcenter()
 }
 
 sourceSets {
@@ -41,8 +40,8 @@ configurations {
 dependencies {
   compileOnly "org.pf4j:pf4j:${pf4jVersion}"
   compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
-  compileOnly "com.netflix.spinnaker.kork:kork-plugins-api:${korkVersion}"
-  compileOnly "com.netflix.spinnaker.kork:kork-web:7.105.0"
+  compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
+  compileOnly "io.spinnaker.kork:kork-web:${korkVersion}"
   compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
   compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
   compileOnly "io.spinnaker.orca:orca-echo:${orcaVersion}"
@@ -66,7 +65,9 @@ configurations.all {
     }
   }
 }
-
+javaCompiler = javaToolchains.compilerFor {
+  languageVersion = JavaLanguageVersion.of(17)
+}
 tasks.withType(Test) {
   useJUnitPlatform()
 }

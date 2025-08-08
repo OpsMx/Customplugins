@@ -39,6 +39,12 @@ subprojects {
       }
     }
   }
+  tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << "-parameters"
+    javaCompiler = javaToolchains.compilerFor {
+      languageVersion = JavaLanguageVersion.of(17)
+    }
+  }
 }
 
 String normalizedVersion() {

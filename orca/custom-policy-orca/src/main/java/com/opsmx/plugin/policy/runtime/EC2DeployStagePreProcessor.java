@@ -24,7 +24,7 @@ class EC2DeployStagePreProcessor implements DeployStagePreProcessor, SpinnakerEx
     @Override
     public boolean supports(StageExecution stage) {
         StageData stageData = stage.mapTo(StageData.class);
-        return stageData.getCloudProvider().equals("aws");
+        return stageData.getCloudProvider().equals("aws") || stageData.getCloudProvider().equals("kubernetes");
     }
 
     @Override

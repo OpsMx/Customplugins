@@ -1,6 +1,7 @@
 package com.opsmx.plugin.policy.runtime;
 
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import com.netflix.spinnaker.orca.clouddriver.pipeline.servergroup.strategies.AbstractDeployStrategyStage;
 import com.netflix.spinnaker.orca.clouddriver.pipeline.servergroup.strategies.DeployStagePreProcessor;
 import com.netflix.spinnaker.kork.plugins.api.internal.SpinnakerExtensionPoint;
 import org.slf4j.Logger;
@@ -9,10 +10,8 @@ import org.springframework.stereotype.Component;
 import org.pf4j.Extension;
 import com.netflix.spinnaker.orca.kato.pipeline.support.StageData;
 import org.springframework.context.annotation.ComponentScan;
-import com.opsmx.plugin.policy.runtime.PolicyAgentValidationTask;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Collections;
 
 @Extension
@@ -24,7 +23,7 @@ class EC2DeployStagePreProcessor implements DeployStagePreProcessor, SpinnakerEx
     @Override
     public boolean supports(StageExecution stage) {
         StageData stageData = stage.mapTo(StageData.class);
-        return stageData.getCloudProvider().equals("aws") || stageData.getCloudProvider().equals("kubernetes");
+        return stageData.getCloudProvider().equals("aws") ;
     }
 
     @Override

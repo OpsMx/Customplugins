@@ -55,9 +55,9 @@ dependencies {
   compileOnly group: 'com.jakewharton.retrofit', name: 'retrofit1-okhttp3-client', version: '1.1.0'
   implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-  testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
-  testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
-  testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
+  testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.4.0"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.4.0"
+  testRuntimeOnly "org.junit.platform:junit-platform-commons:1.5.2"
 }
 
 configurations.all {

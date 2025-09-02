@@ -1,7 +1,8 @@
 package com.opsmx.plugin.policy.runtime;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import com.netflix.spinnaker.orca.kato.pipeline.support.StageData;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
@@ -12,8 +13,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okhttp3.ResponseBody;
-
 import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.HashMap;
@@ -21,16 +20,17 @@ import java.util.List;
 import java.util.ArrayList;
 import java.io.IOException;
 
-
 @Component
 @ConfigurationProperties(prefix = "ssd.validation")
 class PolicyAgentValidationTask implements Task {
+    private final Logger logger = LoggerFactory.getLogger(PolicyAgentValidationTask.class);
     private String responseCode;
     public String getUrl() {
         return url;
     }
 
     public void setUrl(String url) {
+        logger.info("SSD url :{}",url);
         this.url = url;
     }
 
@@ -39,15 +39,7 @@ class PolicyAgentValidationTask implements Task {
     @Nonnull
     @Override
    public TaskResult execute(@Nonnull StageExecution stage) {
-        StageData stageData = stage.mapTo(StageData.class);
-
-        Map<String, Object> stageContext = stage.getContext();
-
-        Map<String, Object> pipelineContext = stage.getExecution().getContext();
-        //pipelineContext.forEach((k,v)->System.out.println("!!## key: " + k + "  value: " + v));
-
-        //System.out.println("##!! execution id: "+stage.getExecution().getId() + " URL: " + url);
-        //stage.getExecution().getTrigger().getParameters().forEach((k,v)->System.out.println("!!## key: " + k + "  value: " + v));
+        logger.debug("Start of the execute PolicyAgentValidationTask");
 
         Map<String, Object> exception = new HashMap<String, Object>();
 
@@ -66,10 +58,6 @@ class PolicyAgentValidationTask implements Task {
         Map<String, Object> taskExecutionDetails = new HashMap<String, Object>();
         taskExecutionDetails.put("exception", exception);
 
-        //failMsg.put("failureMessage", "ERROR: due to SSD validation failure");
-        //stage.getOutputs().put("failureMessage", "ERROR: This artifact deployment is blocked by SSD.");
-
-
         ///// Case 1: If URL is not correct
 
         ///// Case 2: If response is not 200
@@ -82,15 +70,15 @@ class PolicyAgentValidationTask implements Task {
             return TaskResult.builder(ExecutionStatus.SUCCEEDED).build();
         else
             stage.getContext().put("exception", exception);
-
+        logger.debug("End of the execute PolicyAgentValidationTask");
         return TaskResult.builder(ExecutionStatus.TERMINAL).context("taskExceptionDetails", taskExecutionDetails).build();
-        //return TaskResult.builder(ExecutionStatus.TERMINAL).outputs(stage.getOutputs()).build();
     }
 
     private boolean validateDeployment(Map<String, Object> parameters){
         boolean reply = false;
+        logger.debug(" Parameters :{}",parameters);
         String requestBody = "{\"account\": \"" + parameters.get("account") + "\", \"appName\": \"" + parameters.get("appName") + "\", \"artifact\": \"" + parameters.get("artifact") + "\", \"clusterName\": \"" + parameters.get("clusterName") + "\", \"service\": \"" + parameters.get("service") + "\", \"teamName\": \"" + parameters.get("teamName") + "\" }";
-        //System.out.println("!!!!!!!!! Inside policyagentvalidationtask validateDeployment   " + requestBody);
+        logger.debug("!!!!!!!!! Inside policyagentvalidationtask validateDeployment   " + requestBody);
 
         OkHttpClient ssdClient = new OkHttpClient();
         RequestBody body = RequestBody.create(requestBody,MediaType.get("application/json; charset=utf-8"));
@@ -100,20 +88,20 @@ class PolicyAgentValidationTask implements Task {
                 .build();
         try (Response response = ssdClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                System.out.println("Request failed: " + response.code());
+                logger.debug("Request failed: " + response.code());
                 return false;
             }
 
             String responseBody = response.body().string();
             String regex = ".*allow.?.?:.?.?true[,}]?.*";
-            //System.out.println("!!!!!!!!! Inside policyagentvalidationtask validateDeployment responseBody " + responseBody);
+            logger.debug("!!!!!!!!! Inside policyagentvalidationtask validateDeployment responseBody " + responseBody);
 
             // Check if "allow" is true
             if (responseBody.matches(regex)) {
-                System.out.println("Access is allowed.");
+                logger.debug("Access is allowed.");
                 reply = true;
             } else {
-                System.out.println("Access is denied.");
+                logger.debug("Access is denied.");
                 reply = false;
             }
 

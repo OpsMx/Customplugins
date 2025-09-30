@@ -24,7 +24,7 @@
     "@uirouter/react": "1.0.2",
     "bufferutil": "4.0.2",
     "graphql": "15.8.0",
-    "lodash": "4.17.20",
+    "lodash": "4.17.21",
     "lodash-es": "4.17.15",
     "pretty-quick": "3.1.0",
     "prop-types": "15.6.1",

@@ -11,33 +11,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.*;
 
 @Component
-@ConfigurationProperties(prefix = "ssd.validation")
 public class DeployStageTaskPreProcessor implements TaskExecutionInterceptor {
 
     private final Logger logger = LoggerFactory.getLogger(DeployStageTaskPreProcessor.class);
 
-    public DeployStageTaskPreProcessor() { }
-    public String getUrl() {
-        return url;
-    }
+    private static final String DEFAULT_CLUSTER_NAME = "ssd-deploy-test";
+    private static final String DEFAULT_TEAM_NAME    = "default";
 
-    public void setUrl(String url) {
-        logger.info("SSD url :{}",url);
-        this.url = url;
-    }
-    private String url="https://ssd.poc.opsmx.net/ssdservice/v1/ssdFirewall";
+    @Value("${ssd.validation.url}")
+    private String url;
+
     @Override
     public StageExecution beforeTaskExecution(Task task, StageExecution stage) {
-        if(!isValidStageType(stage.getType())){
+        if (!isValidStageType(stage.getType())) {
             return stage;
         }
         logger.debug("Start of the beforeTaskExecution DeployStageTaskPreProcessor");
         logger.debug("stage type :{}",stage.getType());
+        logger.info("SSD url from config: {}", url);
         if (stage.getExecution()!=null && stage.getExecution().getCancellationReason() != null ){
             logger.debug("CancellationReason :{} ",stage.getExecution().getCancellationReason());
             List<TaskExecution> taskExecutions = stage.getTasks();
@@ -79,8 +76,12 @@ public class DeployStageTaskPreProcessor implements TaskExecutionInterceptor {
         Map<String, Object> stageContext = stage.getContext();
         logger.debug("Stage Context :{}", stageContext);
         String account = stageContext.get("account").toString();
-        String artifact = getArtifact(stageContext);
-        String requestBody = "{\"account\": \"" + account + "\", \"appName\": \"" + application + "\", \"artifact\": \"" + artifact + "\",  \"service\": \"" + pipelineName + "\"}";
+        String image = getArtifact(stageContext);
+        // Always include a default clusterName and teamName because stageContext does not provide them
+        String clusterName = DEFAULT_CLUSTER_NAME;
+        String teamName = DEFAULT_TEAM_NAME;
+
+        String requestBody = "{\"account\": \"" + account + "\", \"appName\": \"" + application + "\", \"image\": \"" + image + "\",  \"service\": \"" + pipelineName + "\", \"clusterName\": \"" + clusterName + "\", \"teamName\": \"" + teamName + "\"}";
         logger.debug("!!!!!!!!! Inside DeployStageTaskPreProcessor validateDeployment   " + requestBody);
 
         OkHttpClient ssdClient = new OkHttpClient();
@@ -90,12 +91,12 @@ public class DeployStageTaskPreProcessor implements TaskExecutionInterceptor {
                 .post(body)
                 .build();
         try (Response response = ssdClient.newCall(request).execute()) {
+            String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
-                logger.debug("Request failed: " + response.code());
+                logger.debug("SSD Request failed with status (code {}): {}", response.code(), responseBody);
                 return false;
             }
 
-            String responseBody = response.body().string();
             String regex = ".*allow.?.?:.?.?true[,}]?.*";
             logger.debug("!!!!!!!!! Inside DeployStageTaskPreProcessor validateDeployment responseBody " + responseBody);
 

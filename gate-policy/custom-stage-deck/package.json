@@ -15,7 +15,7 @@
     "prepare": "husky-install"
   },
   "dependencies": {
-    "@spinnaker/core": "1.0.7",
+    "@spinnaker/core": " 0.29.1",
     "@spinnaker/pluginsdk": "2025.3.0",
     "@spinnaker/pluginsdk-peerdeps": "2025.3.0",
     "@spinnaker/presentation": "0.3.1",

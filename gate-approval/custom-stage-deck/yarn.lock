@@ -2998,9 +2998,9 @@ diff-match-patch@^1.0.4:
   integrity sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==
 
 diff@^4.0.1:
-  version "4.0.2"
-  resolved "https://registry.yarnpkg.com/diff/-/diff-4.0.2.tgz#60f3aecb89d5fae520c11aa19efc2bb982aade7d"
-  integrity sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==
+  version "4.0.4"
+  resolved "https://registry.yarnpkg.com/diff/-/diff-4.0.4.tgz#7a6dbfda325f25f07517e9b518f897c08332e07d"
+  integrity sha512-X07nttJQkwkfKfvTPG/KSnE2OMdcUCao6+eXF3wmnIQRn2aPAHH3VxDbDOdegkd6JbPsXqShpvEOHfAT+nCNwQ==
 
 dir-glob@^3.0.1:
   version "3.0.1"
@@ -5164,6 +5164,11 @@ multimatch@^4.0.0:
     array-union "^2.1.0"
     arrify "^2.0.1"
     minimatch "^3.0.4"
+
+multiselect-react-dropdown@^2.0.22:
+  version "2.0.25"
+  resolved "https://registry.yarnpkg.com/multiselect-react-dropdown/-/multiselect-react-dropdown-2.0.25.tgz#0c8d16f20d78023d5be2f3af4f15a4a164b6b427"
+  integrity sha512-z8kUSyBNOuV7vn4Dk35snzXWtIfTdSEEXhgDdLMvOmR+xJFx35vc1voUlSuOvrk3khb+hXC219Qs9szOvNm25Q==
 
 nanoid@^3.1.22:
   version "3.1.23"

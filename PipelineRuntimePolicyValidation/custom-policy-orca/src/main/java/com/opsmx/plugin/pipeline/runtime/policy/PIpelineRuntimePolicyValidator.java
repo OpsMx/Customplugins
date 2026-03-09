@@ -99,7 +99,7 @@ public class PIpelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 
 		} catch (IOException e) {
 			e.printStackTrace();
-			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getIsdUrl(), e.toString());
+			logger.error("Communication exception for ISD at {}: {}", opaConfigProperties.getIsdUrl(), e.toString());
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
 		} catch (Exception e) {
@@ -111,16 +111,6 @@ public class PIpelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 		}
 		logger.debug("End of the Policy Validation");
 		return pipeline;
-	}
-
-	private boolean isChildPipeline(Map<String, Object> pipeline) {
-		if( pipeline.containsKey("trigger") ) {
-			Map<String, Object> trigger = (Map<String, Object>) pipeline.get("trigger");
-			if (trigger.containsKey("type") && trigger.get("type").toString().equalsIgnoreCase("pipeline") && trigger.containsKey("parentExecution")) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private void validateOPAResponse(String opaStringResponse){

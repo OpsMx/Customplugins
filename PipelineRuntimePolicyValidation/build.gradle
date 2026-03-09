@@ -15,16 +15,16 @@ repositories {
 }
 
 spinnakerBundle {
-  pluginId = "Opsmx.RuntimePolicyPlugin"
-  description = "An example of a PF4J-based plugin that provides a custom pipeline stage."
+  pluginId = "Opsmx.PipelineRuntimePolicyPlugin"
+  description = "An example of a PF4J-based plugin that provides a custom pipeline runtime policy."
   provider = "https://github.com/opsmx"
   version = rootProject.version
 }
 
-version = "v1.0.3-SNAPSHOT"
+version = "v1.0.1-SNAPSHOT"
 
 subprojects {
-  group = "com.opsmx.plugin.policy.runtime"
+  group = "com.opsmx.plugin.pipeline.runtime.policy"
   version = rootProject.version
 
   if (name != "custom-stage-deck") {

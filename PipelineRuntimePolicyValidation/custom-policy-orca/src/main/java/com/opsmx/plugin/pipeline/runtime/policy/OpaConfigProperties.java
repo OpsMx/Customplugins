@@ -7,9 +7,11 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 @Configuration
-@EnableConfigurationProperties({OpaConfigProperties.class})
+@ConfigurationProperties(prefix = "policy.opa")
+@EnableConfigurationProperties({OpaConfigProperties.class, OpaConfigProperties.Policy.class})
 public class OpaConfigProperties {
-    private String isdUrl="http://oes-sapor:8085/v1/data";
+    private String isdUrl="http://oes-sapor:8085";
+    private String opaPolicyLocation = "/v1/data/";
     private String resultKey="deny";
     private boolean enabled=false;
     private List<Policy> runtime;
@@ -20,6 +22,14 @@ public class OpaConfigProperties {
 
     public void setIsdUrl(String isdUrl) {
         this.isdUrl = isdUrl;
+    }
+
+    public String getOpaPolicyLocation() {
+        return opaPolicyLocation;
+    }
+
+    public void setOpaPolicyLocation(String opaPolicyLocation) {
+        this.opaPolicyLocation = opaPolicyLocation;
     }
 
     public String getResultKey() {

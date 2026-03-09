@@ -82,7 +82,8 @@ public class PIpelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 
 			if (!opaConfigProperties.getRuntime().isEmpty()) {
 				for (OpaConfigProperties.Policy policy : opaConfigProperties.getRuntime()) {
-					String opaFinalUrl = String.format("%s/%s", opaConfigProperties.getIsdUrl().endsWith("/") ? opaConfigProperties.getIsdUrl().substring(0, opaConfigProperties.getIsdUrl().length() - 1) : opaConfigProperties.getIsdUrl(), policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
+					String opaISD = opaConfigProperties.getIsdUrl().endsWith("/") ? opaConfigProperties.getIsdUrl().substring(0, opaConfigProperties.getIsdUrl().length() - 1) : opaConfigProperties.getIsdUrl() + opaConfigProperties.getOpaPolicyLocation();
+					String opaFinalUrl = String.format("%s/%s", opaISD, policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);
 					Response httpResponse = doPost(opaFinalUrl, requestBody);
 					opaStringResponse = httpResponse.body().string();

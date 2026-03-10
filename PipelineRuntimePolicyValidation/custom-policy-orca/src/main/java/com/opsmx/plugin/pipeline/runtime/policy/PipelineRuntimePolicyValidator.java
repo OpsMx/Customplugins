@@ -104,8 +104,6 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
 		} catch (Exception e) {
-			e.printStackTrace();
-			logger.error("Exception occured : {}", e);
 			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
@@ -162,7 +160,6 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 		String application;
 		String pipelineName;
 		try {
-			//JsonObject newPipeline = pipelineToJsonObject(pipeline);
 			if (pipeline.containsKey("application")) {
 				application = pipeline.get("application").toString();
 				pipelineName = pipeline.get("name").toString();
@@ -173,9 +170,8 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 				throw new ValidationException("The received pipeline doesn't have application field", null);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			logger.error("Exception occured converting the PipelineExecution :{}", e);
-			throw new ValidationException("Failed to convert the PipelineExecution to OPA Input :" + e.toString(), null);
+			throw new ValidationException("Failed to convert the PipelineExecution to OPA Input :" + e, null);
 		}
 	}
 
@@ -183,19 +179,6 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 		Map<String, Object> input = new HashMap<>();
 		input.put(wrapper, pipeline);
 		return input;
-	}
-
-	private JsonObject pipelineToJsonObject(Map<String, Object> pipeline) {
-		logger.debug("Start of the pipelineToJsonObject");
-		try {
-			String pipelineStr = gson.toJson(pipeline, Map.class);
-			logger.debug("End of the pipelineToJsonObject");
-			return gson.fromJson(pipelineStr, JsonObject.class);
-		}catch (Exception e){
-			e.printStackTrace();
-			logger.error("Exception occure while converting the input pipline to Json :{}", e);
-			throw new ValidationException("Converstion Failed while converting the input pipline to Json:" + e, null);
-		}
 	}
 
 	private Response doPost(String url, RequestBody requestBody) throws IOException {

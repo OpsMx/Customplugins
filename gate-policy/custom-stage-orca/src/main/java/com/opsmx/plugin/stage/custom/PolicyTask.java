@@ -69,6 +69,9 @@ public class PolicyTask implements Task {
 	@Value("${policy.opa.url:http://oes-server-svc.oes:8085}")
 	private String opaSvcUrl;
 
+	@Value("${policy.opa.failopen.externalOpaUrl:false}")
+	private boolean externalOpaUrl;
+
 	@Value("${policy.opa.failopen.timeout:10}")
 	private int timeoutSeconds;
 
@@ -350,25 +353,33 @@ public class PolicyTask implements Task {
 	private String getTriggerURL(StageExecution stage, Map<String, Object> outputs) throws UnsupportedEncodingException, TimeoutException {
 
 		if (failOpen) {
-			String policyName = "";
-			String stringParam = gson.toJson(stage.getContext().get("parameters"), Map.class);
+			if (externalOpaUrl) {
+				boolean reachable = checkOpaReachability(opaSvcUrl, timeoutSeconds);
+				if (!reachable) {
+					logger.warn("OPA not reachable, but failOpen enabled. Proceeding.");
+				}
+			} else {
+				String policyName = "";
+				String stringParam = gson.toJson(stage.getContext().get("parameters"), Map.class);
 
-			JsonObject parameters = gson.fromJson(stringParam, JsonObject.class);
+				JsonObject parameters = gson.fromJson(stringParam, JsonObject.class);
 
-			if(parameters.has("policyName"))
-				policyName = parameters.get("policyName").getAsString();
-			    logger.debug("Policy stage with policy : {}", policyName);
+				if(parameters.has("policyName"))
+					policyName = parameters.get("policyName").getAsString();
+				logger.debug("Policy stage with policy : {}", policyName);
 				logger.debug("FailOpen is true, triggering failOpenUrl : {}" + opaSvcUrl+failOpenReq);
 				String response = callOpaWithTimeout(policyName);
 
-			if (response != null) {
-				logger.debug("FailOpen URL succeeded, continuing execution by getting the trigger url");
+				if (response != null) {
+					logger.debug("FailOpen URL succeeded, continuing execution by getting the trigger url");
 
-			} else {
-				logger.warn("Process OPA failOpenRequest failed due to OPA server connectivity issue");
-				return FAILOPEN_FAILED;
+				} else {
+					logger.warn("Process OPA failOpenRequest failed due to OPA server connectivity issue");
+					return FAILOPEN_FAILED;
+				}
 			}
 		}
+
 		String triggerEndpoint = constructGateEnpoint(stage);
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		try {
@@ -597,6 +608,20 @@ public class PolicyTask implements Task {
 		} catch (IOException e) {
 			logger.error("Connection error while reaching OPA", e);
 			return null;
+		}
+	}
+
+	private boolean checkOpaReachability(String opaUrl, int timeoutSeconds) {
+		try {
+			URL url = new URL(opaUrl);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setConnectTimeout(timeoutSeconds * 1000);
+			conn.setReadTimeout(timeoutSeconds * 1000);
+			conn.setRequestMethod("GET");
+			return conn.getResponseCode() < 500;
+		} catch (Exception e) {
+			logger.error("OPA reachability check failed", e);
+			return false;
 		}
 	}
 

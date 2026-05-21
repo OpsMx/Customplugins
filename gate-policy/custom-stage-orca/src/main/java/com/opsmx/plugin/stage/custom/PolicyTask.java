@@ -357,6 +357,7 @@ public class PolicyTask implements Task {
 				boolean reachable = checkOpaReachability(opaSvcUrl, timeoutSeconds);
 				if (!reachable) {
 					logger.warn("OPA not reachable, but failOpen enabled. Proceeding.");
+					return FAILOPEN_FAILED;
 				}
 			} else {
 				String policyName = "";

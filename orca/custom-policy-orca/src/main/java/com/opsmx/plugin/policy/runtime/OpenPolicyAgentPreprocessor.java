@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.ComponentScan;
+import java.util.concurrent.TimeUnit;
 
 import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
 
@@ -121,7 +122,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 				}
 			}
 
-		} } catch (IOException e) {
+		} catch (IOException e) {
 		e.printStackTrace();
 		logger.error("Communication exception for OPA at {}", opaConfigProperties.getUrl(), e);
 		logger.debug("End of the Policy Validation");
@@ -131,7 +132,7 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			return pipeline;
 		}
 		throw new ValidationException(e.toString(), null);
-	} } catch (Exception e) {
+	}  catch (Exception e) {
 		e.printStackTrace();
 			logger.error("Exception occured : {}", e);
 			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
@@ -143,6 +144,9 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
         }
 			throw new ValidationException(e.toString(), null);
 		}
+		logger.debug("End of the Policy Validation");
+		return pipeline;
+	}
 
 	private boolean isChildPipeline(Map<String, Object> pipeline) {
 		if( pipeline.containsKey("trigger") ) {

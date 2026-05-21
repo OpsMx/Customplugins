@@ -71,6 +71,18 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			logger.debug("End of the Policy Validation");
 			return pipeline;
 		}
+		if (opaConfigProperties.getFailOpen() != null
+				&& opaConfigProperties.getFailOpen().isEnabled()) {
+
+			boolean reachable = checkOpaReachability(
+					opaConfigProperties.getUrl(),
+					opaConfigProperties.getFailOpen().getTimeout()
+			);
+			if (!reachable) {
+				logger.warn("OPA not reachable, but failOpen enabled. Proceeding with pipeline execution.");
+				return pipeline;
+			}
+		}
 		try {
 			/*if(isChildPipeline(pipeline)){
 				logger.debug("This pipeline is a child pipeline and trigger by parent ");
@@ -109,21 +121,28 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 				}
 			}
 
-		} catch (IOException e) {
-			e.printStackTrace();
-			logger.error("Communication exception for OPA at {}: {}", opaConfigProperties.getUrl(), e.toString());
-			logger.debug("End of the Policy Validation");
-			throw new ValidationException(e.toString(), null);
-		} catch (Exception e) {
-			e.printStackTrace();
+		} } catch (IOException e) {
+		e.printStackTrace();
+		logger.error("Communication exception for OPA at {}", opaConfigProperties.getUrl(), e);
+		logger.debug("End of the Policy Validation");
+		if (opaConfigProperties.getFailOpen() != null
+				&& opaConfigProperties.getFailOpen().isEnabled()) {
+			logger.warn("OPA communication failed, but failOpen enabled. Proceeding.");
+			return pipeline;
+		}
+		throw new ValidationException(e.toString(), null);
+	} } catch (Exception e) {
+		e.printStackTrace();
 			logger.error("Exception occured : {}", e);
 			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
 			logger.debug("End of the Policy Validation");
+		if (opaConfigProperties.getFailOpen() != null
+		&& opaConfigProperties.getFailOpen().isEnabled()) {
+		logger.warn("OPA communication failed, but failOpen enabled. Proceeding.");
+        return pipeline;
+        }
 			throw new ValidationException(e.toString(), null);
 		}
-		logger.debug("End of the Policy Validation");
-		return pipeline;
-	}
 
 	private boolean isChildPipeline(Map<String, Object> pipeline) {
 		if( pipeline.containsKey("trigger") ) {
@@ -133,6 +152,27 @@ public class OpenPolicyAgentPreprocessor implements ExecutionPreprocessor, Spinn
 			}
 		}
 		return false;
+	}
+
+	private boolean checkOpaReachability(String opaUrl, int timeoutSeconds) {
+		try {
+			OkHttpClient client = new OkHttpClient.Builder()
+					.connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
+					.readTimeout(timeoutSeconds, TimeUnit.SECONDS)
+					.build();
+
+			Request request = new Request.Builder()
+					.url(opaUrl)
+					.get()
+					.build();
+
+			try (Response response = client.newCall(request).execute()) {
+				return response.code() < 500;
+			}
+		} catch (Exception e) {
+			logger.error("OPA reachability check failed", e);
+			return false;
+		}
 	}
 
 	private void validateOPAResponse(String opaStringResponse){

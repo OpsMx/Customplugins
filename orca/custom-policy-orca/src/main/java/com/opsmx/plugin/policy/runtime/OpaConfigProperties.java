@@ -88,4 +88,35 @@ public class OpaConfigProperties {
         }
     }
 
+    private FailOpen failOpen;
+
+    public FailOpen getFailOpen() {
+        return failOpen;
+    }
+
+    public void setFailOpen(FailOpen failOpen) {
+        this.failOpen = failOpen;
+    }
+
+    public static class FailOpen {
+        private boolean enabled = false;
+        private int timeout = 10;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getTimeout() {
+            return timeout;
+        }
+
+        public void setTimeout(int timeout) {
+            this.timeout = timeout;
+        }
+    }
+
 }

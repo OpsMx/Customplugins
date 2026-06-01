@@ -104,6 +104,7 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);
 		} catch (Exception e) {
+			e.printStackTrace();
 			logger.error("Some thing wrong While processing the OPA Validation, input : {}", pipeline);
 			logger.debug("End of the Policy Validation");
 			throw new ValidationException(e.toString(), null);

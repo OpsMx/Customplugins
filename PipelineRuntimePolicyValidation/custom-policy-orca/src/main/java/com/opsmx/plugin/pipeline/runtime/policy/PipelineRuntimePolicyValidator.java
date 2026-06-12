@@ -63,7 +63,8 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 
 		logger.debug("Start of the Pipeline Runtime Policy Validation");
 		logger.debug("input Pipeline :{}", pipeline);
-		if (!opaConfigProperties.isEnabled()) {
+		logger.debug(" Runtime enabled :{}",(!(opaConfigProperties.isEnabled() && (opaConfigProperties.getRuntime() != null && opaConfigProperties.getRuntime().isEnabled()))));
+		if (!(opaConfigProperties.isEnabled() && (opaConfigProperties.getRuntime() != null && opaConfigProperties.getRuntime().isEnabled()))) {
 			logger.info("OPA  not enabled, returning");
 			logger.debug("End of the Pipeline Runtime Policy Validation");
 			return pipeline;
@@ -80,8 +81,8 @@ public class PipelineRuntimePolicyValidator implements ExecutionPreprocessor, Sp
 			logger.debug("OPA endpoint : {}", opaConfigProperties.getRuntimeUrl());
 			String opaStringResponse = "{}";
 
-			if (opaConfigProperties.getRuntime() != null && !opaConfigProperties.getRuntime().isEmpty()) {
-				for (OpaConfigProperties.Policy policy : opaConfigProperties.getRuntime()) {
+			if (opaConfigProperties.getRuntime() != null && !opaConfigProperties.getRuntime().getPolicies().isEmpty()) {
+				for (OpaConfigProperties.Policy policy : opaConfigProperties.getRuntime().getPolicies()) {
 					String opaUrl = opaConfigProperties.getRuntimeUrl().endsWith("/") ? opaConfigProperties.getRuntimeUrl().substring(0, opaConfigProperties.getRuntimeUrl().length() - 1) : opaConfigProperties.getRuntimeUrl() + opaConfigProperties.getOpaPolicyLocation();
 					String opaFinalUrl = String.format("%s/%s", opaUrl, policy.getPackageName().startsWith("/") ? policy.getPackageName().substring(1) : policy.getPackageName());
 					logger.debug("opaFinalUrl: {}", opaFinalUrl);

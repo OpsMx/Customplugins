@@ -8,14 +8,15 @@ import java.util.List;
 
 @Configuration
 @ConfigurationProperties(prefix = "policy.opa")
-@EnableConfigurationProperties({OpaConfigProperties.class, OpaConfigProperties.Policy.class})
+@EnableConfigurationProperties({OpaConfigProperties.class, OpaConfigProperties.RuntimePolicy.class, OpaConfigProperties.ManualJudgmentPolicy.class})
 public class OpaConfigProperties {
     private String url="http://oes-sapor:8085";
     private String runtimeUrl="http://opa:8181";
     private String opaPolicyLocation = "/v1/data";
     private String resultKey="deny";
     private boolean enabled=false;
-    private List<Policy> runtime;
+    private RuntimePolicy runtime = new RuntimePolicy();
+    private ManualJudgmentPolicy manualjudgment = new ManualJudgmentPolicy();
 
     public String getUrl() {
         return url;
@@ -57,16 +58,66 @@ public class OpaConfigProperties {
         this.enabled = enabled;
     }
 
-    public List<Policy> getRuntime() {
+    public RuntimePolicy getRuntime() {
         return runtime;
     }
 
-    public void setRuntime(List<Policy> runtime) {
+    public void setRuntime(RuntimePolicy runtime) {
         this.runtime = runtime;
+    }
+
+    public ManualJudgmentPolicy getManualjudgment() {
+        return manualjudgment;
+    }
+
+    public void setManualjudgment(ManualJudgmentPolicy manualjudgment) {
+        this.manualjudgment = manualjudgment;
     }
 
     @Configuration
     @ConfigurationProperties(prefix = "policy.opa.runtime")
+    public static class RuntimePolicy {
+        private boolean enabled = false;
+        private List<Policy> policies;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public List<Policy> getPolicies() {
+            return policies;
+        }
+
+        public void setPolicies(List<Policy> policies) {
+            this.policies = policies;
+        }
+    }
+    @Configuration
+    @ConfigurationProperties(prefix = "policy.opa.manualjudgment")
+    public static class ManualJudgmentPolicy {
+        private boolean enabled = false;
+        private List<Policy> policies;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public List<Policy> getPolicies() {
+            return policies;
+        }
+
+        public void setPolicies(List<Policy> policies) {
+            this.policies = policies;
+        }
+    }
     public static class Policy{
         private String name;
         private String packageName;
@@ -87,4 +138,5 @@ public class OpaConfigProperties {
             this.packageName = packageName;
         }
     }
+
 }

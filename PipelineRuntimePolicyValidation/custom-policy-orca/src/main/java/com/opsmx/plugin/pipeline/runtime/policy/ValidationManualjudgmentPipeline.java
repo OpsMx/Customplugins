@@ -90,10 +90,12 @@ public class ValidationManualjudgmentPipeline {
                         throw new ValidationException(opaStringResponse, null);
                     }else{
                        String errorMsg =  validateOPAResponse(opaStringResponse);
-                        stageExecution.setStatus(ExecutionStatus.TERMINAL);
-                        stageExecution.getExecution().setStatus(ExecutionStatus.TERMINAL);
-                        setCancelReason(stageExecution);
-                        stageExecution.getContext().put("errors", stageExecution.getExecution().getCancellationReason());
+                        if (errorMsg.equalsIgnoreCase("")) {
+                            stageExecution.setStatus(ExecutionStatus.TERMINAL);
+                            stageExecution.getExecution().setStatus(ExecutionStatus.TERMINAL);
+                            setCancelReason(stageExecution);
+                            stageExecution.getContext().put("errors", stageExecution.getExecution().getCancellationReason());
+                        }
                     }
                 }
             }
